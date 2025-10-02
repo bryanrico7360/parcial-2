@@ -2,11 +2,10 @@ import { NextResponse } from "next/server";
 import PDFDocument from "pdfkit";
 import fs from "fs";
 import path from "path";
-import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   try {
-    const products = await prisma.product.findMany();
+    const products = await product.find();
     console.log("PRODUCTS:", products);
 
     // 👉 Ruta a tu fuente Roboto (nombre largo)
