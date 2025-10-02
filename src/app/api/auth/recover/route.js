@@ -12,6 +12,7 @@ export async function POST(req) {
     await connectDB();
 
     const { email } = await req.json();
+    console.log("📩 Email recibido en recover:", email);
     const user = await User.findOne({ email });
     if (!user) {
       return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
