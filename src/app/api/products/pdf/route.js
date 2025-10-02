@@ -56,36 +56,60 @@ export async function GET() {
         doc.text("No hay productos en la base de datos 😅", { align: "center" });
       } else {
         for (const p of products) {
-          doc.fontSize(14).text(`Código: ${p.codigo || p.id}`);
-          doc.fontSize(14).text(`Producto: ${p.nombre}`);
-          doc.fontSize(12).text(`Precio: $${p.precio}`);
-          doc.text(`Stock: ${p.stock}`);
-          doc.text(`Descripción: ${p.descripcion || "N/A"}`);
-          doc.moveDown(0.5);
+  const cardX = 50;
+  const cardY = doc.y; // empieza donde va el cursor
+  const cardWidth = 500;
+  const cardHeight = 150;
 
-          if (p.foto) {
-            try {
-              const imagePath = path.join(
-                process.cwd(),
-                "public",
-                p.foto.replace(/^\//, "")
-              );
-              if (fs.existsSync(imagePath)) {
-                doc.image(imagePath, { width: 120, height: 120 });
-              } else {
-                doc.text("⚠️ Imagen no encontrada");
-              }
-            } catch {
-              doc.text("⚠️ Error al cargar imagen");
-            }
-          }
+  // 🔹 Dibujar card (borde)
+  doc.rect(cardX, cardY, cardWidth, cardHeight).stroke();
 
-          doc.moveDown(2);
-        }
+  // 🔹 Imagen a la izquierda
+  const imageSize = 120;
+  if (p.foto) {
+    try {
+      const imagePath = path.join(
+        process.cwd(),
+        "public",
+        p.foto.replace(/^\//, "")
+      );
+      if (fs.existsSync(imagePath)) {
+        doc.image(imagePath, cardX + 10, cardY + 10, {
+          width: imageSize,
+          height: imageSize,
+        });
+      } else {
+        doc.fontSize(10).text("⚠️ Imagen no encontrada", cardX + 10, cardY + 60);
       }
+    } catch {
+      doc.fontSize(10).text("⚠️ Error al cargar imagen", cardX + 10, cardY + 60);
+    }
+  }
+
+  // 🔹 Texto a la derecha de la imagen
+  const textX = cardX + imageSize + 30;
+  let textY = cardY + 20;
+
+  doc.fontSize(14).text(`Código: ${p.codigo || p.id}`, textX, textY);
+  textY += 20;
+  doc.fontSize(14).text(`Producto: ${p.nombre}`, textX, textY);
+  textY += 20;
+  doc.fontSize(12).text(`Precio: $${p.precio}`, textX, textY);
+  textY += 20;
+  doc.text(`Stock: ${p.stock}`, textX, textY);
+  textY += 20;
+  doc.text(`Descripción: ${p.descripcion || "N/A"}`, textX, textY, {
+    width: cardWidth - imageSize - 60, // límite para que no se salga
+  });
+
+  // 🔹 Mueve el cursor debajo de la card para la siguiente
+  doc.moveDown();
+  doc.y = cardY + cardHeight + 20;
+}}
 
       doc.end();
     });
+
   } catch (error) {
     console.error("❌ Error generando PDF:", error);
     return NextResponse.json(
