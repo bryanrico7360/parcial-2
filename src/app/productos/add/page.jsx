@@ -1,111 +1,199 @@
 "use client";
 import { useState } from "react";
 
-export default function AddProductPage() {
+export default function RegistrarProductoPage() {
+  const [formData, setFormData] = useState({
+    nombre: "",
+    precio: "",
+    descripcion: "",
+    stock: "",
+  });
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
-  const [name, setName] = useState("");
-  const [price, setPrice] = useState("");
-  const [description, setDescription] = useState("");
-  const [stock, setStock] = useState("");
+  const [message, setMessage] = useState("");
+
+  // Validaciones
+  const isFormValid =
+    formData.nombre.trim() !== "" &&
+    formData.precio !== "" &&
+    parseFloat(formData.precio) >= 0 &&
+    formData.descripcion.trim() !== "" &&
+    formData.stock !== "" &&
+    parseInt(formData.stock) >= 0 &&
+    file !== null;
+
+  const handleChange = (e) => {
+    let { name, value } = e.target;
+    if ((name === "precio" || name === "stock") && value < 0) {
+      value = 0;
+    }
+    setFormData({ ...formData, [name]: value });
+  };
 
   const handleDrop = (e) => {
     e.preventDefault();
-    const f = e.dataTransfer.files[0];
-    setFile(f);
-    setPreview(URL.createObjectURL(f));
+    const droppedFile = e.dataTransfer.files[0];
+    if (droppedFile) {
+      setFile(droppedFile);
+      setPreview(URL.createObjectURL(droppedFile));
+    }
   };
 
-  const handleUpload = async (e) => {
-    e.preventDefault();
-    if (!file) return alert("Sube una imagen");
+  const handleDragOver = (e) => e.preventDefault();
 
-    // 1. subir imagen
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const res = await fetch("/api/upload", { method: "POST", body: formData });
-    const data = await res.json();
-
-    if (!res.ok) {
-      alert("Error subiendo imagen");
-      return;
-    }
-
-    const photo = data.fileName;
-
-    // 2. guardar producto
-    const productRes = await fetch("/api/products", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, price, description, stock, photo }),
-    });
-
-    if (productRes.ok) {
-      alert("✅ Producto agregado");
-      setName(""); setPrice(""); setDescription(""); setStock(""); setFile(null); setPreview(null);
+  const handleFileChange = (e) => {
+    if (e.target.files.length > 0) {
+      const f = e.target.files[0];
+      setFile(f);
+      setPreview(URL.createObjectURL(f));
     } else {
-      alert("Error guardando producto");
+      setFile(null);
+      setPreview(null);
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setFile(null);
+    setPreview(null);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setMessage("");
+
+    if (!isFormValid) return;
+
+    const data = new FormData();
+    data.append("nombre", formData.nombre);
+    data.append("precio", formData.precio);
+    data.append("descripcion", formData.descripcion);
+    data.append("stock", formData.stock);
+    if (file) data.append("foto", file);
+
+    try {
+      const res = await fetch("/api/products", {
+        method: "POST",
+        body: data,
+      });
+
+      const result = await res.json();
+      if (res.ok) {
+        setMessage("✅ Producto registrado correctamente");
+        setFormData({ nombre: "", precio: "", descripcion: "", stock: "" });
+        setFile(null);
+        setPreview(null);
+      } else {
+        setMessage(result.error || "❌ Error al registrar");
+      }
+    } catch (error) {
+      console.error("Error en la petición:", error);
+      setMessage("❌ Error al conectar con el servidor");
     }
   };
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-gray-100">
       <form
-        onSubmit={handleUpload}
+        onSubmit={handleSubmit}
         className="bg-white p-6 rounded-xl shadow w-96 space-y-4"
       >
-        <h1 className="text-2xl font-bold text-center">Agregar Producto</h1>
+        <h1 className="text-2xl font-bold text-black text-center">
+          Registrar Producto
+        </h1>
+
+        {message && <p className="text-center text-blue-600">{message}</p>}
 
         <input
           type="text"
+          name="nombre"
           placeholder="Nombre"
-          className="border p-2 w-full"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
+          value={formData.nombre}
+          onChange={handleChange}
+          className="border text-black p-2 w-full rounded"
           required
         />
 
         <input
           type="number"
+          name="precio"
           placeholder="Precio"
-          className="border p-2 w-full"
-          value={price}
-          onChange={(e) => setPrice(e.target.value)}
+          value={formData.precio}
+          onChange={handleChange}
+          className="border text-black p-2 w-full rounded"
+          min="0"
           required
         />
 
         <textarea
+          name="descripcion"
           placeholder="Descripción"
-          className="border p-2 w-full"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
+          value={formData.descripcion}
+          onChange={handleChange}
+          className="border text-black p-2 w-full rounded"
+          required
         />
 
         <input
           type="number"
-          placeholder="Stock"
-          className="border p-2 w-full"
-          value={stock}
-          onChange={(e) => setStock(e.target.value)}
+          name="stock"
+          placeholder="Cantidad en stock"
+          value={formData.stock}
+          onChange={handleChange}
+          className="border text-black p-2 w-full rounded"
+          min="0"
           required
         />
 
+        {/* Drag & Drop con preview */}
         <div
           onDrop={handleDrop}
-          onDragOver={(e) => e.preventDefault()}
-          className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer bg-gray-50"
+          onDragOver={handleDragOver}
+          className="border-2 border-dashed p-6 rounded text-center text-gray-500"
         >
-          {preview ? (
-            <img src={preview} alt="preview" className="w-32 h-32 mx-auto object-cover" />
+          {file ? (
+            <div className="text-black flex flex-col items-center space-y-2">
+              <p>📸 {file.name}</p>
+              <button
+                type="button"
+                onClick={handleRemoveFile}
+                className="text-red-500 text-sm hover:underline"
+              >
+                Quitar archivo
+              </button>
+              {preview && (
+                <img
+                  src={preview}
+                  alt="preview"
+                  className="mt-2 w-32 h-32 object-cover rounded"
+                />
+              )}
+            </div>
           ) : (
-            "Arrastra una imagen aquí"
+            "Arrastra una imagen aquí o haz click"
           )}
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            className="hidden"
+            id="fileInput"
+          />
+          <label
+            htmlFor="fileInput"
+            className="cursor-pointer text-blue-600 block mt-2"
+          >
+            Seleccionar archivo
+          </label>
         </div>
 
         <button
           type="submit"
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+          disabled={!isFormValid}
+          className={`w-full text-white py-2 rounded ${
+            isFormValid
+              ? "bg-blue-600 hover:bg-blue-700"
+              : "bg-blue-600/50 cursor-not-allowed"
+          }`}
         >
           Guardar Producto
         </button>
