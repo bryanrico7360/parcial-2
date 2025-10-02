@@ -1,0 +1,23 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id          String   @id @map("_id") @db.ObjectId
+  codigo      String?
+  nombre      String
+  precio      Float
+  descripcion String?
+  stock       Int
+  foto        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Asegúrate que el nombre coincide con tu colección en Compass
+  @@map("products")
+}
