@@ -2,13 +2,15 @@ import { NextResponse } from "next/server";
 import PDFDocument from "pdfkit";
 import fs from "fs";
 import path from "path";
+import { connectDB } from "@/lib/db";
+import Product from "@/lib/models/product";
 
 export async function GET() {
   try {
-    const products = await product.find();
+    await connectDB();
+    const products = await Product.find();
     console.log("PRODUCTS:", products);
 
-    // 👉 Ruta a tu fuente Roboto (nombre largo)
     const robotoPath = path.join(
       process.cwd(),
       "public",
@@ -24,7 +26,7 @@ export async function GET() {
       const chunks = [];
       const doc = new PDFDocument({
         margin: 30,
-        font: robotoPath, // ✅ Fuente larga
+        font: robotoPath,
       });
 
       doc.on("data", (chunk) => chunks.push(chunk));
@@ -53,20 +55,20 @@ export async function GET() {
       if (products.length === 0) {
         doc.text("No hay productos en la base de datos 😅", { align: "center" });
       } else {
-        for (const product of products) {
-          doc.fontSize(14).text(`Código: ${product.codigo || product.id}`);
-          doc.fontSize(14).text(`Producto: ${product.nombre}`);
-          doc.fontSize(12).text(`Precio: $${product.precio}`);
-          doc.text(`Stock: ${product.stock}`);
-          doc.text(`Descripción: ${product.descripcion || "N/A"}`);
+        for (const p of products) {
+          doc.fontSize(14).text(`Código: ${p.codigo || p.id}`);
+          doc.fontSize(14).text(`Producto: ${p.nombre}`);
+          doc.fontSize(12).text(`Precio: $${p.precio}`);
+          doc.text(`Stock: ${p.stock}`);
+          doc.text(`Descripción: ${p.descripcion || "N/A"}`);
           doc.moveDown(0.5);
 
-          if (product.foto) {
+          if (p.foto) {
             try {
               const imagePath = path.join(
                 process.cwd(),
                 "public",
-                product.foto.replace(/^\//, "")
+                p.foto.replace(/^\//, "")
               );
               if (fs.existsSync(imagePath)) {
                 doc.image(imagePath, { width: 120, height: 120 });
