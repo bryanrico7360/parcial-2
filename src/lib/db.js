@@ -1,11 +1,12 @@
 import mongoose from "mongoose";
 import { seedUser } from "./seedUser.js"; // 🔹 importa el seed
 
-const MONGODB_URI = process.env.DATABASE_URL;
+const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {
-  throw new Error("⚠️ Debes definir MONGODB_URI en .env.local");
+  throw new Error("⚠️ Debes definir la variable MONGODB_URI en tu entorno (.env.local o Railway)");
 }
+
 
 let isConnected = false;
 
