@@ -1,9 +1,11 @@
 "use client";
+
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Eye, EyeOff } from "lucide-react"; // 👈 necesitas: npm i lucide-react
+import { Eye, EyeOff } from "lucide-react";
+import { Suspense } from "react";
 
-export default function ResetPage() {
+function ResetPageContent() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -90,5 +92,13 @@ export default function ResetPage() {
         </button>
       </form>
     </main>
+  );
+}
+
+export default function ResetPage() {
+  return (
+    <Suspense fallback={<div className="text-center p-6">Cargando...</div>}>
+      <ResetPageContent />
+    </Suspense>
   );
 }
