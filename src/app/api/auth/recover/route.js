@@ -1,8 +1,11 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import jwt from "jsonwebtoken";
 import User from "@/lib/models/user";
 import { connectDB } from "@/lib/db"; 
 import { NextResponse } from "next/server";
+
+// inicializar Resend con tu API Key desde las variables de entorno
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req) {
   try {
@@ -21,19 +24,9 @@ export async function POST(req) {
 
     const resetLink = `${process.env.BASE_URL}/reset?token=${token}`;
 
-    // transporter
-    const transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_HOST,
-      port: process.env.EMAIL_PORT,
-      secure: true,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
-
-    await transporter.sendMail({
-      from: `"Soporte" <${process.env.EMAIL_USER}>`,
+    // enviar correo con Resend
+    await resend.emails.send({
+      from: "Soporte <onboarding@resend.dev>", // dominio de prueba de Resend
       to: email,
       subject: "Recupera tu contraseña",
       html: `<p>Haz click aquí para cambiar tu contraseña:</p>
