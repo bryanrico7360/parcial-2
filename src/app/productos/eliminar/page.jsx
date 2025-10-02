@@ -53,7 +53,7 @@ export default function EliminarProductoPage() {
           type="submit"
           className="w-full bg-red-600 text-white py-2 rounded 
                      hover:bg-red-700 transform transition-transform 
-                     duration-200 hover:scale-105 shadow-md"
+                     duration-200 hover:scale-105 shadow-md cursor-pointer"
         >
           Eliminar Producto
         </button>

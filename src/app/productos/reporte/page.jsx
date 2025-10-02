@@ -33,7 +33,7 @@ export default function ReportePage() {
         <button
           onClick={handleGenerate}
           disabled={loading}
-          className="w-full bg-purple-600 text-white py-2 rounded hover:bg-purple-700 transform hover:scale-105 transition-transform"
+          className="w-full bg-purple-600 cursor-pointer text-white py-2 rounded hover:bg-purple-700 transform hover:scale-105 transition-transform"
         >
           {loading ? "Generando..." : "📄 Generar PDF"}
         </button>

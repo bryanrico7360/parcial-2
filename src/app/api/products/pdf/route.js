@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import PDFDocument from "pdfkit";
 import fs from "fs";
 import path from "path";
+import axios from "axios"; // 👈 para descargar imágenes desde Cloudinary
 import { connectDB } from "@/lib/db";
 import Product from "@/lib/models/product";
 
@@ -55,61 +56,81 @@ export async function GET() {
       if (products.length === 0) {
         doc.text("No hay productos en la base de datos 😅", { align: "center" });
       } else {
-        for (const p of products) {
-  const cardX = 50;
-  const cardY = doc.y; // empieza donde va el cursor
-  const cardWidth = 500;
-  const cardHeight = 150;
+        (async () => {
+          for (const p of products) {
+            const cardX = 50;
+            const cardY = doc.y; // empieza donde va el cursor
+            const cardWidth = 500;
+            const cardHeight = 150;
 
-  // 🔹 Dibujar card (borde)
-  doc.rect(cardX, cardY, cardWidth, cardHeight).stroke();
+            // 🔹 Dibujar card (borde)
+            doc.rect(cardX, cardY, cardWidth, cardHeight).stroke();
 
-  // 🔹 Imagen a la izquierda
-  const imageSize = 120;
-  if (p.foto) {
-    try {
-      const imagePath = path.join(
-        process.cwd(),
-        "public",
-        p.foto.replace(/^\//, "")
-      );
-      if (fs.existsSync(imagePath)) {
-        doc.image(imagePath, cardX + 10, cardY + 10, {
-          width: imageSize,
-          height: imageSize,
-        });
-      } else {
-        doc.fontSize(10).text("⚠️ Imagen no encontrada", cardX + 10, cardY + 60);
+            // 🔹 Imagen a la izquierda
+            const imageSize = 120;
+            if (p.foto) {
+              try {
+                if (p.foto.startsWith("http")) {
+                  // Si la foto está en Cloudinary
+                  const response = await axios.get(p.foto, {
+                    responseType: "arraybuffer",
+                  });
+                  const imgBuffer = Buffer.from(response.data, "binary");
+                  doc.image(imgBuffer, cardX + 10, cardY + 10, {
+                    width: imageSize,
+                    height: imageSize,
+                  });
+                } else {
+                  // Si es una ruta local (public/)
+                  const imagePath = path.join(
+                    process.cwd(),
+                    "public",
+                    p.foto.replace(/^\//, "")
+                  );
+                  if (fs.existsSync(imagePath)) {
+                    doc.image(imagePath, cardX + 10, cardY + 10, {
+                      width: imageSize,
+                      height: imageSize,
+                    });
+                  } else {
+                    doc
+                      .fontSize(10)
+                      .text("⚠️ Imagen no encontrada", cardX + 10, cardY + 60);
+                  }
+                }
+              } catch (err) {
+                console.error("❌ Error cargando imagen:", err);
+                doc
+                  .fontSize(10)
+                  .text("⚠️ Error al cargar imagen", cardX + 10, cardY + 60);
+              }
+            }
+
+            // 🔹 Texto a la derecha de la imagen
+            const textX = cardX + imageSize + 30;
+            let textY = cardY + 20;
+
+            doc.fontSize(14).text(`Código: ${p.codigo || p.id}`, textX, textY);
+            textY += 20;
+            doc.fontSize(14).text(`Producto: ${p.nombre}`, textX, textY);
+            textY += 20;
+            doc.fontSize(12).text(`Precio: $${p.precio}`, textX, textY);
+            textY += 20;
+            doc.text(`Stock: ${p.stock}`, textX, textY);
+            textY += 20;
+            doc.text(`Descripción: ${p.descripcion || "N/A"}`, textX, textY, {
+              width: cardWidth - imageSize - 60,
+            });
+
+            // 🔹 Mueve el cursor debajo de la card
+            doc.moveDown();
+            doc.y = cardY + cardHeight + 20;
+          }
+
+          doc.end(); // 👈 muy importante, cerrar después del bucle
+        })();
       }
-    } catch {
-      doc.fontSize(10).text("⚠️ Error al cargar imagen", cardX + 10, cardY + 60);
-    }
-  }
-
-  // 🔹 Texto a la derecha de la imagen
-  const textX = cardX + imageSize + 30;
-  let textY = cardY + 20;
-
-  doc.fontSize(14).text(`Código: ${p.codigo || p.id}`, textX, textY);
-  textY += 20;
-  doc.fontSize(14).text(`Producto: ${p.nombre}`, textX, textY);
-  textY += 20;
-  doc.fontSize(12).text(`Precio: $${p.precio}`, textX, textY);
-  textY += 20;
-  doc.text(`Stock: ${p.stock}`, textX, textY);
-  textY += 20;
-  doc.text(`Descripción: ${p.descripcion || "N/A"}`, textX, textY, {
-    width: cardWidth - imageSize - 60, // límite para que no se salga
-  });
-
-  // 🔹 Mueve el cursor debajo de la card para la siguiente
-  doc.moveDown();
-  doc.y = cardY + cardHeight + 20;
-}}
-
-      doc.end();
     });
-
   } catch (error) {
     console.error("❌ Error generando PDF:", error);
     return NextResponse.json(

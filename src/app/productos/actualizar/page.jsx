@@ -223,7 +223,7 @@ export default function ActualizarProductoPage() {
           disabled={!isFormValid}
           className={`w-full text-white py-2 rounded ${
             isFormValid
-              ? "bg-green-600 hover:bg-green-700 transform hover:scale-105 transition-transform"
+              ? "bg-green-600 cursor-pointer hover:bg-green-700 transform hover:scale-105 transition-transform"
               : "bg-green-600/50 cursor-not-allowed"
           }`}
         >

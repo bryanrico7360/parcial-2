@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import Product from "@/lib/models/product";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
-import fs from "fs";
+import cloudinary from "@/lib/cloudinary";
 
 // 🔹 Crear producto
 export async function POST(req) {
@@ -17,7 +15,7 @@ export async function POST(req) {
     const stock = Number(formData.get("stock"));
     const foto = formData.get("foto");
 
-    // Generar nuevo ID
+    // Generar nuevo ID personalizado
     const lastProduct = await Product.findOne().sort({ createdAt: -1 });
     let newId = "PROD001";
     if (lastProduct && lastProduct.id) {
@@ -26,21 +24,25 @@ export async function POST(req) {
       newId = `PROD${nextNum}`;
     }
 
-    // Guardar imagen
-    let fileName = null;
+    // 📌 Subir a Cloudinary
+    let imageUrl = null;
+    let publicId = null;
     if (foto && typeof foto === "object") {
       const bytes = await foto.arrayBuffer();
       const buffer = Buffer.from(bytes);
 
-      fileName = `${Date.now()}-${foto.name}`;
-      const dir = path.join(process.cwd(), "public", "images");
+      const upload = await new Promise((resolve, reject) => {
+        cloudinary.uploader.upload_stream(
+          { folder: "productos" },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          }
+        ).end(buffer);
+      });
 
-      if (!fs.existsSync(dir)) {
-        await mkdir(dir, { recursive: true });
-      }
-
-      const filePath = path.join(dir, fileName);
-      await writeFile(filePath, buffer);
+      imageUrl = upload.secure_url;
+      publicId = upload.public_id;
     }
 
     const newProduct = new Product({
@@ -49,7 +51,8 @@ export async function POST(req) {
       precio,
       descripcion,
       stock,
-      foto: fileName ? `/images/${fileName}` : null,
+      foto: imageUrl,
+      fotoPublicId: publicId, // 👈 guardamos public_id para poder borrarla luego
     });
 
     await newProduct.save();

@@ -191,7 +191,7 @@ export default function RegistrarProductoPage() {
           disabled={!isFormValid}
           className={`w-full text-white py-2 rounded ${
             isFormValid
-              ? "bg-blue-600 hover:bg-blue-700"
+              ? "bg-blue-600 cursor-pointer hover:bg-blue-700 transform hover:scale-105 transition-transform"
               : "bg-blue-600/50 cursor-not-allowed"
           }`}
         >
