@@ -71,11 +71,17 @@ export async function GET() {
             if (p.foto) {
               try {
                 if (p.foto.startsWith("http")) {
-                  // Si la foto está en Cloudinary
-                  const response = await axios.get(p.foto, {
+                  // 🔹 Forzar Cloudinary a entregar JPG en vez de WebP
+                  let imageUrl = p.foto;
+                  if (imageUrl.includes("cloudinary.com")) {
+                    imageUrl = imageUrl.replace("/upload/", "/upload/f_jpg/");
+                  }
+
+                  const response = await axios.get(imageUrl, {
                     responseType: "arraybuffer",
                   });
                   const imgBuffer = Buffer.from(response.data, "binary");
+
                   doc.image(imgBuffer, cardX + 10, cardY + 10, {
                     width: imageSize,
                     height: imageSize,
