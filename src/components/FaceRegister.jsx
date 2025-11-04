@@ -12,7 +12,7 @@ export function FaceRegister({ onCapture }) {
   const [captured, setCaptured] = useState(false);
   const [message, setMessage] = useState("");
 
-  // 🧠 Carga de modelos
+  // 🧠 Cargar modelos
   useEffect(() => {
     async function loadModels() {
       const MODEL_URL = "/models";
@@ -25,11 +25,19 @@ export function FaceRegister({ onCapture }) {
     }
     loadModels();
 
-    return () => {
-      const v = videoRef.current;
-      if (v && v.srcObject) v.srcObject.getTracks().forEach((t) => t.stop());
-    };
+    // 🧹 Limpieza al desmontar
+    return () => stopCamera();
   }, []);
+
+  // 🔴 Función para detener cámara
+  const stopCamera = () => {
+    const video = videoRef.current;
+    if (video && video.srcObject) {
+      video.srcObject.getTracks().forEach((track) => track.stop());
+      video.srcObject = null;
+    }
+    setCameraActive(false);
+  };
 
   // 🎥 Activar cámara
   const handleActivateCamera = async () => {
@@ -49,11 +57,11 @@ export function FaceRegister({ onCapture }) {
     }
   };
 
-  // 🔍 Detección facial con control estricto de captura
+  // 🔍 Detección facial
   useEffect(() => {
     if (!modelsReady || !cameraActive || captured) return;
 
-    let hasCaptured = false; // 🔒 evita capturas duplicadas
+    let hasCaptured = false;
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const displaySize = { width: 320, height: 240 };
@@ -79,6 +87,7 @@ export function FaceRegister({ onCapture }) {
           setCaptured(true);
           setMessage("✅ Rostro capturado correctamente");
           onCapture(Array.from(detection.descriptor));
+          stopCamera(); // 🔴 detener cámara después de capturar
         }
       } else {
         setFaceDetected(false);
@@ -100,7 +109,6 @@ export function FaceRegister({ onCapture }) {
   return (
     <div className="flex flex-col items-center space-y-3">
       <div className="relative w-[320px] h-[240px] rounded-md overflow-hidden border border-gray-400">
-        {/* Cámara espejo */}
         <video
           ref={videoRef}
           width={320}
@@ -112,7 +120,6 @@ export function FaceRegister({ onCapture }) {
             cameraActive ? "block" : "hidden"
           }`}
         />
-        {/* Canvas espejo alineado */}
         <canvas
           ref={canvasRef}
           width={320}
@@ -128,7 +135,6 @@ export function FaceRegister({ onCapture }) {
         )}
       </div>
 
-      {/* Mensaje dinámico */}
       <p
         className={`text-sm font-medium ${
           captured

@@ -25,13 +25,18 @@ export function FaceLogin({ onCapture }) {
     }
     loadModels();
 
-    return () => {
-      const v = videoRef.current;
-      if (v && v.srcObject) v.srcObject.getTracks().forEach((t) => t.stop());
-    };
+    return () => stopCamera();
   }, []);
 
-  // 🎥 Activar cámara
+  const stopCamera = () => {
+    const video = videoRef.current;
+    if (video && video.srcObject) {
+      video.srcObject.getTracks().forEach((track) => track.stop());
+      video.srcObject = null;
+    }
+    setCameraActive(false);
+  };
+
   const handleActivateCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -49,7 +54,6 @@ export function FaceLogin({ onCapture }) {
     }
   };
 
-  // 🔍 Detección facial
   useEffect(() => {
     if (!modelsReady || !cameraActive || recognized) return;
 
@@ -77,6 +81,7 @@ export function FaceLogin({ onCapture }) {
           setRecognized(true);
           setMessage("✅ Rostro reconocido correctamente");
           onCapture(Array.from(detection.descriptor));
+          stopCamera(); // 🔴 detener cámara al reconocer
         }
       } else {
         setFaceDetected(false);
@@ -87,7 +92,6 @@ export function FaceLogin({ onCapture }) {
     return () => clearInterval(interval);
   }, [modelsReady, cameraActive, capturing, recognized, onCapture]);
 
-  // 📸 Capturar rostro
   const handleCapture = () => {
     if (faceDetected) {
       setCapturing(true);
@@ -98,7 +102,6 @@ export function FaceLogin({ onCapture }) {
   return (
     <div className="flex flex-col items-center space-y-3">
       <div className="relative w-[320px] h-[240px] rounded-md overflow-hidden border border-gray-400">
-        {/* Cámara espejo */}
         <video
           ref={videoRef}
           width={320}
@@ -110,7 +113,6 @@ export function FaceLogin({ onCapture }) {
             cameraActive ? "block" : "hidden"
           }`}
         />
-        {/* Canvas espejo alineado */}
         <canvas
           ref={canvasRef}
           width={320}
@@ -126,7 +128,6 @@ export function FaceLogin({ onCapture }) {
         )}
       </div>
 
-      {/* Mensaje dinámico */}
       <p
         className={`text-sm font-medium ${
           recognized
