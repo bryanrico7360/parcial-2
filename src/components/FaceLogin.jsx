@@ -23,6 +23,7 @@ export function FaceLogin() {
     }
     loadModels();
 
+    // cleanup
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       const v = videoRef.current;
@@ -36,16 +37,35 @@ export function FaceLogin() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
       const video = videoRef.current;
-      video.srcObject = stream;
-      video.play();
+      if (video.srcObject !== stream) {
+  video.srcObject = stream;
+}
+
+try {
+  const playPromise = video.play();
+  if (playPromise && typeof playPromise.then === "function") {
+    await playPromise.catch((err) => {
+      if (err.name !== "AbortError") {
+        console.warn("Error al reproducir video:", err);
+      }
+    });
+  }
+} catch (err) {
+  if (err.name !== "AbortError") {
+    console.warn("Error al iniciar video:", err);
+  }
+}
+
 
       video.onloadedmetadata = () => {
         adjustCanvasSize();
         runDetectionLoop();
       };
+
       window.addEventListener("resize", adjustCanvasSize);
     } catch (err) {
       console.error("Error al acceder a la cámara:", err);
+      alert("No se pudo acceder a la cámara. Revisa los permisos.");
     }
   };
 
@@ -57,8 +77,12 @@ export function FaceLogin() {
     const rect = video.getBoundingClientRect();
     const displayWidth = Math.round(rect.width);
     const displayHeight = Math.round(rect.height);
+
     canvas.width = displayWidth;
     canvas.height = displayHeight;
+    canvas.style.width = `${displayWidth}px`;
+    canvas.style.height = `${displayHeight}px`;
+
     faceapi.matchDimensions(canvas, { width: displayWidth, height: displayHeight });
   };
 
@@ -68,16 +92,16 @@ export function FaceLogin() {
     if (!video || !canvas) return;
 
     const rect = video.getBoundingClientRect();
-    const displaySize = { width: rect.width, height: rect.height };
+    const displaySize = { width: Math.round(rect.width), height: Math.round(rect.height) };
 
     const detections = await faceapi
       .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
       .withFaceLandmarks();
 
     const resized = faceapi.resizeResults(detections, displaySize);
-
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
     faceapi.draw.drawDetections(canvas, resized);
     faceapi.draw.drawFaceLandmarks(canvas, resized);
 
@@ -98,26 +122,26 @@ export function FaceLogin() {
       return;
     }
 
-    // Enviar el descriptor al backend
-    const faceDescriptor = Array.from(detection.descriptor);
+    const faceEmbedding = Array.from(detection.descriptor);
 
     try {
-      const res = await fetch("/api/login-face", {
+      const res = await fetch("/api/auth/login-face", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ faceDescriptor }),
+        body: JSON.stringify({ faceEmbedding }),
       });
 
       const data = await res.json();
 
-      if (data.success) {
-        alert("✅ Login exitoso");
-        router.push("/dashboard"); // redirige a donde quieras
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+        router.push("/menu");
       } else {
-        alert("❌ Rostro no reconocido.");
+        alert(data.error || "No se pudo autenticar el rostro");
       }
     } catch (err) {
-      console.error("Error al iniciar sesión:", err);
+      console.error("Error al autenticar:", err);
+      alert("Error al procesar el inicio de sesión facial.");
     }
   };
 
@@ -142,7 +166,7 @@ export function FaceLogin() {
         />
         <canvas
           ref={canvasRef}
-          className="absolute top-0 left-0"
+          className="absolute top-0 left-0 rounded-md"
           style={{
             transform: "scaleX(-1)",
             pointerEvents: "none",
@@ -152,11 +176,14 @@ export function FaceLogin() {
 
       <button
         type="button"
-        onClick={handleLogin}
+        onClick={() => {
+          adjustCanvasSize();
+          handleLogin();
+        }}
         disabled={!loaded}
         className="bg-blue-600 text-white px-3 py-1 rounded"
       >
-        Iniciar sesión con rostro
+        Iniciar con rostro
       </button>
     </div>
   );
