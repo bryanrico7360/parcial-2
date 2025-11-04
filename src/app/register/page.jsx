@@ -22,7 +22,6 @@ export default function RegisterPage() {
     }
 
     if (!faceEmbedding) {
-      alert("Debes capturar tu rostro antes de continuar");
       return;
     }
 
@@ -99,11 +98,6 @@ export default function RegisterPage() {
         <div className="mt-4">
           <p className="text-black text-sm mb-2">Captura tu rostro:</p>
           <FaceRegister onCapture={setFaceEmbedding} />
-          {faceEmbedding && (
-            <p className="text-green-600 text-sm text-center mt-1">
-              ✅ Rostro capturado correctamente
-            </p>
-          )}
         </div>
 
         <button
