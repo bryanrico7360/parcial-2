@@ -2,7 +2,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
-import { FaceLogin } from "@/components/FaceLogin";
+import Link from "next/link";
+import { FaceLogin } from "@/components/FaceLogin"; // ok si FaceLogin es named export
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -87,12 +88,14 @@ export default function LoginPage() {
               </button>
             </form>
 
-            <a
-              href="/register"
-              className="text-sm text-blue-600 block text-center hover:underline cursor-pointer"
-            >
-              Registrarse
-            </a>
+            <div className="text-center space-y-2 mt-2">
+              <Link href="/register" className="text-sm text-blue-600 hover:underline">
+                Registrarse
+              </Link>
+              <Link href="/recover" className="text-sm text-blue-600 hover:underline block">
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </div>
 
             <div className="flex items-center my-2">
               <hr className="flex-grow border-gray-300" />

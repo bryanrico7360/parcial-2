@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@react-email/render": "^1.4.0",
     "@tensorflow/tfjs": "^4.22.0",
     "axios": "^1.12.2",
     "bcryptjs": "^3.0.2",
