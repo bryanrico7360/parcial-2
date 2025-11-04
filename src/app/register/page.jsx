@@ -2,11 +2,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
+import { FaceRegister } from "@/components/FaceRegister";
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [faceEmbedding, setFaceEmbedding] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const router = useRouter();
@@ -19,10 +21,15 @@ export default function RegisterPage() {
       return;
     }
 
+    if (!faceEmbedding) {
+      alert("Debes capturar tu rostro antes de continuar");
+      return;
+    }
+
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, faceEmbedding }),
     });
 
     const data = await res.json();
@@ -86,6 +93,17 @@ export default function RegisterPage() {
           >
             {showConfirm ? <EyeOff size={20} /> : <Eye size={20} />}
           </button>
+        </div>
+
+        {/* Captura de rostro */}
+        <div className="mt-4">
+          <p className="text-black text-sm mb-2">Captura tu rostro:</p>
+          <FaceRegister onCapture={setFaceEmbedding} />
+          {faceEmbedding && (
+            <p className="text-green-600 text-sm text-center mt-1">
+              ✅ Rostro capturado correctamente
+            </p>
+          )}
         </div>
 
         <button

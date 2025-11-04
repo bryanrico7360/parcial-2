@@ -7,28 +7,25 @@ export async function POST(req) {
   await connectDB();
 
   try {
-    const { email, password, secretQuestion, secretAnswer } = await req.json();
+    const { email, password, secretQuestion, secretAnswer, faceEmbedding } = await req.json();
 
-    // Validar campos
     if (!email || !password) {
       return NextResponse.json({ error: "Email y contraseña son obligatorios" }, { status: 400 });
     }
 
-    // Revisar si ya existe
     const userExist = await User.findOne({ email });
     if (userExist) {
       return NextResponse.json({ error: "El usuario ya existe" }, { status: 400 });
     }
 
-    // Hashear contraseña
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Crear usuario
     const newUser = new User({
       email,
       password: hashedPassword,
       secretQuestion,
       secretAnswer,
+      faceEmbedding, // 🔹 Guardar el embedding facial
     });
 
     await newUser.save();
