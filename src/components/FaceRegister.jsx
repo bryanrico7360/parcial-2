@@ -5,161 +5,113 @@ import * as faceapi from "face-api.js";
 export function FaceRegister({ onCapture }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
-  const rafRef = useRef(null);
-  const [loaded, setLoaded] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [capturing, setCapturing] = useState(false);
+  const [faceDetected, setFaceDetected] = useState(false);
 
   useEffect(() => {
-    let mounted = true;
-
-    async function loadModels() {
+    async function setup() {
       const MODEL_URL = "/models";
+
       await Promise.all([
         faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
         faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
         faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
       ]);
 
-      if (!mounted) return;
-      setLoaded(true);
-      startCamera();
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+
+      setReady(true);
     }
 
-    loadModels();
-
-    // cleanup
-    return () => {
-      mounted = false;
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      const v = videoRef.current;
-      if (v && v.srcObject) {
-        v.srcObject.getTracks().forEach((t) => t.stop());
-        v.srcObject = null;
-      }
-      window.removeEventListener("resize", adjustCanvasSize);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setup();
   }, []);
 
-  const startCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      const video = videoRef.current;
-      if (!video) return;
+  useEffect(() => {
+    if (!ready || !videoRef.current) return;
 
-      if (video.srcObject !== stream) video.srcObject = stream;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const displaySize = { width: 320, height: 240 };
 
-      // Manejo de AbortError
-      try {
-        const playPromise = video.play();
-        if (playPromise && typeof playPromise.then === "function") {
-          await playPromise.catch((err) => {
-            if (err.name !== "AbortError") console.error("video.play error:", err);
-          });
+    faceapi.matchDimensions(canvas, displaySize);
+
+    const interval = setInterval(async () => {
+      const detection = await faceapi
+        .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (detection) {
+        setFaceDetected(true);
+        const resized = faceapi.resizeResults(detection, displaySize);
+
+        // 🟢 Solo dibuja puntos del rostro (sin recuadro ni número)
+        faceapi.draw.drawFaceLandmarks(canvas, resized);
+
+        if (capturing) {
+          onCapture(Array.from(detection.descriptor));
+          setCapturing(false);
+          alert("✅ Rostro capturado correctamente");
         }
-      } catch (err) {
-        if (err.name !== "AbortError") console.error("video.play error:", err);
+      } else {
+        setFaceDetected(false);
       }
+    }, 200);
 
-      video.onloadedmetadata = () => {
-        adjustCanvasSize();
-        runDetectionLoop();
-      };
+    return () => clearInterval(interval);
+  }, [ready, capturing, onCapture]);
 
-      window.addEventListener("resize", adjustCanvasSize);
-    } catch (err) {
-      console.error("Error al acceder a la cámara:", err);
-      alert("No se pudo acceder a la cámara. Revisa permisos.");
-    }
-  };
-
-  const adjustCanvasSize = () => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas) return;
-
-    const rect = video.getBoundingClientRect();
-    const displayWidth = Math.round(rect.width);
-    const displayHeight = Math.round(rect.height);
-
-    canvas.width = displayWidth;
-    canvas.height = displayHeight;
-    canvas.style.width = `${displayWidth}px`;
-    canvas.style.height = `${displayHeight}px`;
-
-    faceapi.matchDimensions(canvas, { width: displayWidth, height: displayHeight });
-  };
-
-  const runDetectionLoop = async () => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas) return;
-
-    const rect = video.getBoundingClientRect();
-    const displaySize = { width: Math.round(rect.width), height: Math.round(rect.height) };
-
-    const detections = await faceapi
-      .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
-      .withFaceLandmarks();
-
-    const resized = faceapi.resizeResults(detections, displaySize);
-
-    const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    faceapi.draw.drawDetections(canvas, resized);
-    faceapi.draw.drawFaceLandmarks(canvas, resized);
-
-    rafRef.current = requestAnimationFrame(runDetectionLoop);
-  };
-
-  const handleCapture = async () => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    const detection = await faceapi
-      .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
-      .withFaceLandmarks()
-      .withFaceDescriptor();
-
-    if (!detection) {
-      alert("No se detectó ningún rostro, intenta de nuevo.");
-      return;
-    }
-
-    onCapture(Array.from(detection.descriptor));
+  const handleCapture = () => {
+    setCapturing(true);
   };
 
   return (
-    <div className="flex flex-col items-center space-y-3 relative">
-      <div className="relative rounded-md overflow-hidden" style={{ width: 320, height: 240 }}>
+    <div className="flex flex-col items-center space-y-2">
+      <div className="relative w-[320px] h-[240px] rounded-md overflow-hidden border border-gray-400">
+        {/* 🎥 Cámara espejo */}
         <video
           ref={videoRef}
-          autoPlay
+          width={320}
+          height={240}
           muted
-          playsInline
-          style={{
-            width: "100%",
-            height: "100%",
-            transform: "scaleX(-1)",
-            objectFit: "cover",
-            display: "block",
-          }}
+          autoPlay
+          className="absolute top-0 left-0 object-cover transform scale-x-[-1]"
         />
+        {/* 🟩 Canvas también en espejo (alineado con video) */}
         <canvas
           ref={canvasRef}
-          className="absolute top-0 left-0 rounded-md"
-          style={{ transform: "scaleX(-1)", pointerEvents: "none" }}
+          width={320}
+          height={240}
+          className="absolute top-0 left-0 transform scale-x-[-1]"
         />
       </div>
 
+      <p
+        className={`text-sm ${
+          faceDetected ? "text-green-600" : "text-gray-500"
+        }`}
+      >
+        {faceDetected
+          ? "Rostro detectado — listo para capturar"
+          : "Alinea tu rostro frente a la cámara"}
+      </p>
+
       <button
-        type="button"
-        onClick={() => {
-          adjustCanvasSize();
-          handleCapture();
-        }}
-        disabled={!loaded}
-        className="bg-green-600 text-white px-3 py-1 rounded"
+        onClick={handleCapture}
+        disabled={!faceDetected}
+        className={`px-4 py-1.5 rounded-md text-white font-medium transition ${
+          faceDetected
+            ? "bg-blue-600 hover:bg-blue-700 cursor-pointer"
+            : "bg-gray-400 cursor-not-allowed"
+        }`}
       >
         Capturar rostro
       </button>

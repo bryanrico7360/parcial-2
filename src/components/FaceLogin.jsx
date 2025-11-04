@@ -6,26 +6,34 @@ import { useRouter } from "next/navigation";
 export function FaceLogin() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
-  const rafRef = useRef(null);
-  const [loaded, setLoaded] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [faceDetected, setFaceDetected] = useState(false);
+  const [capturing, setCapturing] = useState(false);
   const router = useRouter();
 
+  // 🔹 Cargar modelos y activar cámara
   useEffect(() => {
-    async function loadModels() {
+    async function setup() {
       const MODEL_URL = "/models";
+
       await Promise.all([
         faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
         faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
         faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
       ]);
-      setLoaded(true);
-      startCamera();
-    }
-    loadModels();
 
-    // cleanup
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+
+      setReady(true);
+    }
+
+    setup();
+
     return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
       const v = videoRef.current;
       if (v && v.srcObject) {
         v.srcObject.getTracks().forEach((t) => t.stop());
@@ -33,155 +41,111 @@ export function FaceLogin() {
     };
   }, []);
 
-  const startCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      const video = videoRef.current;
-      if (video.srcObject !== stream) {
-  video.srcObject = stream;
-}
+  // 🔹 Detección continua de rostro
+  useEffect(() => {
+    if (!ready || !videoRef.current) return;
 
-try {
-  const playPromise = video.play();
-  if (playPromise && typeof playPromise.then === "function") {
-    await playPromise.catch((err) => {
-      if (err.name !== "AbortError") {
-        console.warn("Error al reproducir video:", err);
-      }
-    });
-  }
-} catch (err) {
-  if (err.name !== "AbortError") {
-    console.warn("Error al iniciar video:", err);
-  }
-}
-
-
-      video.onloadedmetadata = () => {
-        adjustCanvasSize();
-        runDetectionLoop();
-      };
-
-      window.addEventListener("resize", adjustCanvasSize);
-    } catch (err) {
-      console.error("Error al acceder a la cámara:", err);
-      alert("No se pudo acceder a la cámara. Revisa los permisos.");
-    }
-  };
-
-  const adjustCanvasSize = () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    if (!video || !canvas) return;
+    const displaySize = { width: 320, height: 240 };
 
-    const rect = video.getBoundingClientRect();
-    const displayWidth = Math.round(rect.width);
-    const displayHeight = Math.round(rect.height);
+    faceapi.matchDimensions(canvas, displaySize);
 
-    canvas.width = displayWidth;
-    canvas.height = displayHeight;
-    canvas.style.width = `${displayWidth}px`;
-    canvas.style.height = `${displayHeight}px`;
+    const interval = setInterval(async () => {
+      const detection = await faceapi
+        .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+        .withFaceLandmarks()
+        .withFaceDescriptor();
 
-    faceapi.matchDimensions(canvas, { width: displayWidth, height: displayHeight });
-  };
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  const runDetectionLoop = async () => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas) return;
+      if (detection) {
+        setFaceDetected(true);
+        const resized = faceapi.resizeResults(detection, displaySize);
 
-    const rect = video.getBoundingClientRect();
-    const displaySize = { width: Math.round(rect.width), height: Math.round(rect.height) };
+        // 🟢 Solo dibuja puntos del rostro (sin recuadro ni número)
+        faceapi.draw.drawFaceLandmarks(canvas, resized);
 
-    const detections = await faceapi
-      .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
-      .withFaceLandmarks();
+        if (capturing) {
+          setCapturing(false);
 
-    const resized = faceapi.resizeResults(detections, displaySize);
-    const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+          // 🔹 Autenticación facial
+          const faceEmbedding = Array.from(detection.descriptor);
 
-    faceapi.draw.drawDetections(canvas, resized);
-    faceapi.draw.drawFaceLandmarks(canvas, resized);
+          try {
+            const res = await fetch("/api/auth/login-face", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ faceEmbedding }),
+            });
 
-    rafRef.current = requestAnimationFrame(runDetectionLoop);
-  };
+            const data = await res.json();
 
-  const handleLogin = async () => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    const detection = await faceapi
-      .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
-      .withFaceLandmarks()
-      .withFaceDescriptor();
-
-    if (!detection) {
-      alert("No se detectó ningún rostro. Intenta de nuevo.");
-      return;
-    }
-
-    const faceEmbedding = Array.from(detection.descriptor);
-
-    try {
-      const res = await fetch("/api/auth/login-face", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ faceEmbedding }),
-      });
-
-      const data = await res.json();
-
-      if (data.token) {
-        localStorage.setItem("token", data.token);
-        router.push("/menu");
+            if (data.token) {
+              localStorage.setItem("token", data.token);
+              alert("✅ Rostro reconocido correctamente");
+              router.push("/menu");
+            } else {
+              alert(data.error || "No se pudo autenticar el rostro");
+            }
+          } catch (err) {
+            console.error("Error al autenticar:", err);
+            alert("Error al procesar el inicio de sesión facial.");
+          }
+        }
       } else {
-        alert(data.error || "No se pudo autenticar el rostro");
+        setFaceDetected(false);
       }
-    } catch (err) {
-      console.error("Error al autenticar:", err);
-      alert("Error al procesar el inicio de sesión facial.");
-    }
+    }, 200);
+
+    return () => clearInterval(interval);
+  }, [ready, capturing, router]);
+
+  // 🔹 Al presionar el botón
+  const handleLogin = () => {
+    setCapturing(true);
   };
 
   return (
-    <div className="flex flex-col items-center space-y-3 relative">
-      <div
-        className="relative rounded-md overflow-hidden"
-        style={{ width: 320, height: 240 }}
-      >
+    <div className="flex flex-col items-center space-y-2">
+      <div className="relative w-[320px] h-[240px] rounded-md overflow-hidden border border-gray-400">
+        {/* 🎥 Cámara espejo */}
         <video
           ref={videoRef}
-          autoPlay
+          width={320}
+          height={240}
           muted
-          playsInline
-          style={{
-            width: "100%",
-            height: "100%",
-            transform: "scaleX(-1)",
-            objectFit: "cover",
-            display: "block",
-          }}
+          autoPlay
+          className="absolute top-0 left-0 object-cover transform scale-x-[-1]"
         />
+        {/* 🟩 Canvas alineado con el video */}
         <canvas
           ref={canvasRef}
-          className="absolute top-0 left-0 rounded-md"
-          style={{
-            transform: "scaleX(-1)",
-            pointerEvents: "none",
-          }}
+          width={320}
+          height={240}
+          className="absolute top-0 left-0 transform scale-x-[-1]"
         />
       </div>
 
+      <p
+        className={`text-sm ${
+          faceDetected ? "text-green-600" : "text-gray-500"
+        }`}
+      >
+        {faceDetected
+          ? "Rostro detectado — listo para iniciar sesión"
+          : "Alinea tu rostro frente a la cámara"}
+      </p>
+
       <button
-        type="button"
-        onClick={() => {
-          adjustCanvasSize();
-          handleLogin();
-        }}
-        disabled={!loaded}
-        className="bg-blue-600 text-white px-3 py-1 rounded"
+        onClick={handleLogin}
+        disabled={!faceDetected}
+        className={`px-4 py-1.5 rounded-md text-white font-medium transition ${
+          faceDetected
+            ? "bg-blue-600 hover:bg-blue-700 cursor-pointer"
+            : "bg-gray-400 cursor-not-allowed"
+        }`}
       >
         Iniciar con rostro
       </button>
