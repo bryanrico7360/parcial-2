@@ -16,10 +16,7 @@ export const connectDB = async () => {
     await mongoose.connect(MONGODB_URI, { dbName: "parcial1" });
     isConnected = true;
     console.log("✅ Conectado a MongoDB Atlas");
-
-    // 🔹 Crea el usuario inicial si no existe
-    await seedUser();
-  } catch (err) {
-    console.error("❌ Error al conectar MongoDB:", err);
-  }
-};
+  } catch (error) {
+    console.error("❌ Error al conectar a MongoDB Atlas:", error);
+    throw error;
+  }};
