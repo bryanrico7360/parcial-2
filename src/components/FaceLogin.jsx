@@ -76,13 +76,24 @@ export function FaceLogin({ onCapture }) {
         const resized = faceapi.resizeResults(detection, displaySize);
         faceapi.draw.drawFaceLandmarks(canvas, resized);
 
-        if (capturing) {
-          setCapturing(false);
-          setRecognized(true);
-          setMessage("✅ Rostro reconocido correctamente");
-          onCapture(Array.from(detection.descriptor));
-          stopCamera(); // 🔴 detener cámara al reconocer
-        }
+if (capturing) {
+  setCapturing(false);
+  setMessage("Verificando rostro...");
+  const embedding = Array.from(detection.descriptor);
+
+  // 🔹 Esperamos la respuesta del backend
+  const success = await onCapture(embedding);
+
+  if (success) {
+    setRecognized(true);
+    setMessage("✅ Rostro reconocido correctamente");
+    stopCamera();
+  } else {
+    setRecognized(false);
+    setMessage("❌ Rostro no reconocido. Intenta nuevamente.");
+  }
+}
+
       } else {
         setFaceDetected(false);
         if (!recognized) setMessage("Alinea tu rostro frente a la cámara");

@@ -30,21 +30,23 @@ export default function LoginPage() {
     }
   };
 
-  const handleFaceLogin = async (faceEmbedding) => {
-    const res = await fetch("/api/auth/login-face", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ faceEmbedding }),
-    });
+const handleFaceLogin = async (faceEmbedding) => {
+  const res = await fetch("/api/auth/login-face", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ faceEmbedding }),
+  });
 
-    const data = await res.json();
-    if (data.token) {
-      localStorage.setItem("token", data.token);
-      router.push("/menu");
-    } else {
-      alert(data.error || "Error en login facial");
-    }
-  };
+  const data = await res.json();
+
+  if (data.token) {
+    localStorage.setItem("token", data.token);
+    router.push("/menu");
+    return true; // ✅ login correcto
+  } else {
+    return false; // ❌ login fallido
+  }
+};
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-gray-100">
