@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export default function RegistrarProductoPage() {
   const [formData, setFormData] = useState({
@@ -12,7 +12,12 @@ export default function RegistrarProductoPage() {
   const [preview, setPreview] = useState(null);
   const [message, setMessage] = useState("");
 
-  // Validaciones
+  // cámara
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const [photo, setPhoto] = useState(null);
+  const [isCameraOn, setIsCameraOn] = useState(false);
+
   const isFormValid =
     formData.nombre.trim() !== "" &&
     formData.precio !== "" &&
@@ -20,26 +25,33 @@ export default function RegistrarProductoPage() {
     formData.descripcion.trim() !== "" &&
     formData.stock !== "" &&
     parseInt(formData.stock) >= 0 &&
-    file !== null;
+    (file !== null || photo !== null);
+
+  useEffect(() => {
+    if (!isCameraOn) return;
+    const iniciarCamara = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        if (videoRef.current) videoRef.current.srcObject = stream;
+      } catch (err) {
+        console.error("Error al acceder a la cámara:", err);
+      }
+    };
+    iniciarCamara();
+
+    return () => {
+      if (videoRef.current && videoRef.current.srcObject) {
+        const tracks = videoRef.current.srcObject.getTracks();
+        tracks.forEach((t) => t.stop());
+      }
+    };
+  }, [isCameraOn]);
 
   const handleChange = (e) => {
     let { name, value } = e.target;
-    if ((name === "precio" || name === "stock") && value < 0) {
-      value = 0;
-    }
+    if ((name === "precio" || name === "stock") && value < 0) value = 0;
     setFormData({ ...formData, [name]: value });
   };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile) {
-      setFile(droppedFile);
-      setPreview(URL.createObjectURL(droppedFile));
-    }
-  };
-
-  const handleDragOver = (e) => e.preventDefault();
 
   const handleFileChange = (e) => {
     if (e.target.files.length > 0) {
@@ -57,6 +69,53 @@ export default function RegistrarProductoPage() {
     setPreview(null);
   };
 
+const tomarFoto = () => {
+  if (!videoRef.current || !canvasRef.current) return;
+
+  const video = videoRef.current;
+  const canvas = canvasRef.current;
+  const context = canvas.getContext("2d");
+
+  const videoWidth = video.videoWidth;
+  const videoHeight = video.videoHeight;
+
+  // 🔹 Calculamos un recorte cuadrado centrado
+  const size = Math.min(videoWidth, videoHeight);
+  const offsetX = (videoWidth - size) / 2;
+  const offsetY = (videoHeight - size) / 2;
+
+  canvas.width = size;
+  canvas.height = size;
+
+  // 🔹 Dibuja la imagen espejada y recortada
+  context.save();
+  context.scale(-1, 1);
+  context.drawImage(
+    video,
+    offsetX,
+    offsetY,
+    size,
+    size,
+    -size,
+    0,
+    size,
+    size
+  );
+  context.restore();
+
+  const imageData = canvas.toDataURL("image/png", 0.9);
+  setPhoto(imageData);
+  setPreview(imageData);
+  setIsCameraOn(false);
+
+  // 🔹 Apagamos la cámara para liberar recursos
+  const stream = video.srcObject;
+  if (stream) {
+    stream.getTracks().forEach((track) => track.stop());
+  }
+};
+
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage("");
@@ -68,7 +127,12 @@ export default function RegistrarProductoPage() {
     data.append("precio", formData.precio);
     data.append("descripcion", formData.descripcion);
     data.append("stock", formData.stock);
+
     if (file) data.append("foto", file);
+    else if (photo) {
+      const blob = await (await fetch(photo)).blob();
+      data.append("foto", blob, "captura.png");
+    }
 
     try {
       const res = await fetch("/api/products", {
@@ -82,6 +146,7 @@ export default function RegistrarProductoPage() {
         setFormData({ nombre: "", precio: "", descripcion: "", stock: "" });
         setFile(null);
         setPreview(null);
+        setPhoto(null);
       } else {
         setMessage(result.error || "❌ Error al registrar");
       }
@@ -144,46 +209,65 @@ export default function RegistrarProductoPage() {
           required
         />
 
-        {/* Drag & Drop con preview */}
-        <div
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          className="border-2 border-dashed p-6 rounded text-center text-gray-500"
-        >
-          {file ? (
-            <div className="text-black flex flex-col items-center space-y-2">
-              <p>📸 {file.name}</p>
+        {/* Sección de imagen */}
+        <div className="border-2 border-dashed p-4 rounded text-center text-gray-500">
+          {preview ? (
+            <div className="flex flex-col items-center space-y-2">
+              <img
+                src={preview}
+                alt="preview"
+                className="mt-2 w-32 h-32 object-cover rounded"
+              />
               <button
                 type="button"
                 onClick={handleRemoveFile}
-                className="text-red-500 text-sm hover:underline"
+                className="text-red-500 text-sm hover:underline cursor-pointer"
               >
-                Quitar archivo
+                Quitar imagen
               </button>
-              {preview && (
-                <img
-                  src={preview}
-                  alt="preview"
-                  className="mt-2 w-32 h-32 object-cover rounded"
-                />
-              )}
+            </div>
+          ) : isCameraOn ? (
+            <div>
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                className="w-full h-48 bg-black rounded mb-2"
+                style={{ transform: "scaleX(-1)" }} 
+              />
+              <button
+                type="button"
+                onClick={tomarFoto}
+                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+              >
+                Tomar foto
+              </button>
+              <canvas ref={canvasRef} className="hidden" />
             </div>
           ) : (
-            "Arrastra una imagen aquí o haz click"
+            <>
+              <p>📸 No hay imagen seleccionada</p>
+              <label
+                htmlFor="fileInput"
+                className="cursor-pointer text-blue-600 block mt-2"
+              >
+                Seleccionar archivo
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
+                id="fileInput"
+              />
+              <p
+                className="cursor-pointer text-green-600 mt-2 hover:underline"
+                onClick={() => setIsCameraOn(true)}
+              >
+                Usar cámara
+              </p>
+            </>
           )}
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleFileChange}
-            className="hidden"
-            id="fileInput"
-          />
-          <label
-            htmlFor="fileInput"
-            className="cursor-pointer text-blue-600 block mt-2"
-          >
-            Seleccionar archivo
-          </label>
         </div>
 
         <button
@@ -191,11 +275,11 @@ export default function RegistrarProductoPage() {
           disabled={!isFormValid}
           className={`w-full text-white py-2 rounded ${
             isFormValid
-              ? "bg-blue-600 cursor-pointer hover:bg-blue-700 transform hover:scale-105 transition-transform"
+              ? "bg-blue-600 hover:bg-blue-700 transform hover:scale-105 transition-transform cursor-pointer"
               : "bg-blue-600/50 cursor-not-allowed"
           }`}
         >
-          Guardar Producto
+          Registrar Producto
         </button>
       </form>
     </main>
