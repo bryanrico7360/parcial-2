@@ -4,14 +4,15 @@ import fs from "fs";
 import path from "path";
 import { connectDB } from "@/lib/db";
 import Product from "@/lib/models/product";
+import Client from "@/lib/models/client";   // 🔹 nuevo
+import Sale from "@/lib/models/sale";       // 🔹 nuevo
 
 export async function POST(req) {
   try {
     await connectDB();
 
     const body = await req.json();
-    const { items, cliente } = body; 
-    // items = [{ productId, cantidad }]
+    const { items, cliente } = body;
 
     if (!items || items.length === 0) {
       return NextResponse.json(
@@ -20,7 +21,17 @@ export async function POST(req) {
       );
     }
 
-    // 🔹 Buscar productos en la BD
+    // 🔹 Buscar o crear cliente
+    let client = null;
+    if (cliente?.trim()) {
+      client = await Client.findOne({ nombre: cliente.trim() });
+      if (!client) {
+        client = await Client.create({ nombre: cliente.trim() });
+        console.log("🟢 Cliente creado:", client.nombre);
+      }
+    }
+
+    // 🔹 Buscar productos
     const productIds = items.map((i) => i.productId);
     const products = await Product.find({ _id: { $in: productIds } });
 
@@ -31,7 +42,7 @@ export async function POST(req) {
       );
     }
 
-    // 🔹 Actualizar stock y calcular totales
+    // 🔹 Calcular totales y actualizar stock
     let totalGeneral = 0;
     const detalles = [];
 
@@ -43,11 +54,11 @@ export async function POST(req) {
       const subtotal = producto.precio * cantidadVendida;
       totalGeneral += subtotal;
 
-      // actualizar stock
       producto.stock = Math.max(producto.stock - cantidadVendida, 0);
       await producto.save();
 
       detalles.push({
+        productId: producto._id,
         nombre: producto.nombre,
         cantidad: cantidadVendida,
         precio: producto.precio,
@@ -55,19 +66,22 @@ export async function POST(req) {
       });
     }
 
-    // 📂 Carpeta donde se guardan las facturas
-    const facturasDir = path.join(process.cwd(), "facturas");
-    if (!fs.existsSync(facturasDir)) {
-      fs.mkdirSync(facturasDir);
-    }
+    // 🔹 Guardar venta en la base de datos
+    const venta = await Sale.create({
+      client: client?._id,
+      items: detalles,
+      total: totalGeneral,
+    });
 
-    // 🧾 Buscar número de factura siguiente
+    // 🔹 Generar PDF (tu parte original)
+    const facturasDir = path.join(process.cwd(), "facturas");
+    if (!fs.existsSync(facturasDir)) fs.mkdirSync(facturasDir);
+
     const files = fs.readdirSync(facturasDir);
-    const count = files.filter(f => f.startsWith("factura")).length + 1;
+    const count = files.filter((f) => f.startsWith("factura")).length + 1;
     const facturaName = `factura${String(count).padStart(3, "0")}.pdf`;
     const facturaPath = path.join(facturasDir, facturaName);
 
-    // 🔹 Fuente
     const robotoPath = path.join(
       process.cwd(),
       "public",
@@ -90,13 +104,8 @@ export async function POST(req) {
 
     return await new Promise((resolve, reject) => {
       const chunks = [];
-      const doc = new PDFDocument({
-        margin: 40,
-        font: robotoPath,
-        size: "A4",
-      });
+      const doc = new PDFDocument({ margin: 40, font: robotoPath, size: "A4" });
 
-      // Guardar también en archivo local (opcional)
       const stream = fs.createWriteStream(facturaPath);
       doc.pipe(stream);
 
@@ -116,7 +125,10 @@ export async function POST(req) {
       doc.on("error", (err) => {
         console.error("Error PDF:", err);
         reject(
-          NextResponse.json({ error: "Error generando factura" }, { status: 500 })
+          NextResponse.json(
+            { error: "Error generando factura" },
+            { status: 500 }
+          )
         );
       });
 
@@ -127,28 +139,22 @@ export async function POST(req) {
       if (cliente) doc.text(`Cliente: ${cliente}`, { align: "right" });
       doc.moveDown(1.5);
 
-      // 🛍️ Tabla de productos
+      // 🛍️ Tabla
       doc.fontSize(14).text("Detalle de productos:", { underline: true });
       doc.moveDown(0.5);
-
-      const tableTop = doc.y;
-      const columnWidths = { nombre: 200, cantidad: 80, precio: 100, subtotal: 100 };
-
-      // encabezado
-      doc.fontSize(12).text("Producto", 50, tableTop);
-      doc.text("Cant.", 270, tableTop);
-      doc.text("Precio", 340, tableTop);
-      doc.text("Subtotal", 440, tableTop);
-      doc.moveDown(0.5);
-      doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
+      doc.fontSize(12).text("Producto", 50);
+      doc.text("Cant.", 270);
+      doc.text("Precio", 340);
+      doc.text("Subtotal", 440);
+      doc.moveTo(50, doc.y + 2).lineTo(550, doc.y + 2).stroke();
 
       for (const d of detalles) {
+        doc.moveDown(0.5);
         const y = doc.y + 5;
-        doc.text(d.nombre, 50, y, { width: columnWidths.nombre });
+        doc.text(d.nombre, 50, y);
         doc.text(d.cantidad.toString(), 270, y);
         doc.text(`$${d.precio.toLocaleString()}`, 340, y);
         doc.text(`$${d.subtotal.toLocaleString()}`, 440, y);
-        doc.moveDown(0.5);
       }
 
       doc.moveDown(1);

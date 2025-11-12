@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Header from "@/components/Header";
 
 export default function GestionInventarioPage() {
@@ -17,6 +17,10 @@ export default function GestionInventarioPage() {
   const [preview, setPreview] = useState(null);
   const [message, setMessage] = useState("");
   const [dragActive, setDragActive] = useState(false);
+
+  // 🧩 Modal de confirmación
+  const [showModal, setShowModal] = useState(false);
+  const [productoAEliminar, setProductoAEliminar] = useState(null);
 
   useEffect(() => {
     fetchProductos();
@@ -83,12 +87,19 @@ export default function GestionInventarioPage() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm("¿Seguro que deseas eliminar este producto?")) return;
+  // 🔹 Muestra el modal
+  const handleDeleteClick = (producto) => {
+    setProductoAEliminar(producto);
+    setShowModal(true);
+  };
+
+  // 🔹 Confirmar eliminación
+  const confirmarEliminacion = async () => {
+    if (!productoAEliminar) return;
     try {
-      const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/products/${productoAEliminar._id}`, { method: "DELETE" });
       if (res.ok) {
-        setProductos(productos.filter((p) => p._id !== id));
+        setProductos(productos.filter((p) => p._id !== productoAEliminar._id));
         setMessage("🗑️ Producto eliminado");
       } else {
         const result = await res.json();
@@ -97,6 +108,9 @@ export default function GestionInventarioPage() {
     } catch (error) {
       console.error(error);
       setMessage("❌ Error al eliminar producto");
+    } finally {
+      setShowModal(false);
+      setProductoAEliminar(null);
     }
   };
 
@@ -143,9 +157,7 @@ export default function GestionInventarioPage() {
         </h1>
 
         {message && (
-          <p className="text-center text-blue-600 mb-4 font-semibold">
-            {message}
-          </p>
+          <p className="text-center text-blue-600 mb-4 font-semibold">{message}</p>
         )}
 
         <div className="overflow-x-auto">
@@ -300,7 +312,7 @@ export default function GestionInventarioPage() {
                             Editar
                           </motion.button>
                           <motion.button
-                            onClick={() => handleDelete(p._id)}
+                            onClick={() => handleDeleteClick(p)}
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs cursor-pointer"
@@ -317,6 +329,49 @@ export default function GestionInventarioPage() {
           </table>
         </div>
       </motion.div>
+
+      {/* 🧩 MODAL DE CONFIRMACIÓN */}
+      <AnimatePresence>
+        {showModal && (
+          <motion.div
+            className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="bg-white rounded-2xl shadow-xl p-6 w-80 text-center"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 200, damping: 18 }}
+            >
+              <h2 className="text-lg font-semibold text-gray-800 mb-3">
+                ¿Eliminar producto?
+              </h2>
+              <p className="text-gray-600 text-sm mb-5">
+                Esta acción no se puede deshacer.
+              </p>
+              <div className="flex justify-center gap-3">
+                <motion.button
+                  onClick={confirmarEliminacion}
+                  whileHover={{ scale: 1.05 }}
+                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded-lg text-sm cursor-pointer"
+                >
+                  Sí, eliminar
+                </motion.button>
+                <motion.button
+                  onClick={() => setShowModal(false)}
+                  whileHover={{ scale: 1.05 }}
+                  className="bg-gray-400 hover:bg-gray-500 text-white px-4 py-1.5 rounded-lg text-sm cursor-pointer"
+                >
+                  Cancelar
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }

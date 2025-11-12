@@ -5,21 +5,25 @@ import Header from "@/components/Header";
 
 export default function ReportePage() {
   const [loading, setLoading] = useState(false);
+  const [cliente, setCliente] = useState("");
 
-  const handleGenerate = async () => {
+  const generarReporte = async (tipo) => {
     setLoading(true);
     try {
-      const res = await fetch("/api/products/pdf");
-      if (!res.ok) throw new Error("Error generando PDF");
+      let url = `/api/reports/xlsx?tipo=${tipo}`;
+      if (tipo === "cliente" && cliente.trim()) {
+        url += `&clienteNombre=${encodeURIComponent(cliente.trim())}`;
+      }
+
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Error generando XLS");
 
       const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url;
-      a.download = "reporte_inventario.pdf";
+      a.href = window.URL.createObjectURL(blob);
+      a.download = `reporte_${tipo}.xlsx`;
       a.click();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
+    } catch (err) {
       alert("❌ Error al generar reporte");
     } finally {
       setLoading(false);
@@ -37,20 +41,47 @@ export default function ReportePage() {
         transition={{ duration: 0.4 }}
       >
         <h1 className="text-2xl font-bold text-black text-center">
-          Reporte de Inventario
+          📊 Reportes del Sistema
         </h1>
 
         <motion.button
-          onClick={handleGenerate}
-          disabled={loading}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          className={`w-full py-2 rounded text-white ${
-            loading ? "bg-purple-400 cursor-not-allowed" : "bg-purple-600 hover:bg-purple-700"
-          } transition-transform`}
+          disabled={loading}
+          onClick={() => generarReporte("ventas")}
+          className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg"
         >
-          {loading ? "Generando..." : "📄 Generar PDF"}
+          {loading ? "Generando..." : "Reporte de Ventas Totales"}
         </motion.button>
+
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          disabled={loading}
+          onClick={() => generarReporte("productos")}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg"
+        >
+          {loading ? "Generando..." : "Reporte de Productos en Stock"}
+        </motion.button>
+
+        <div className="space-y-3">
+          <input
+            type="text"
+            placeholder="Nombre o ID del cliente"
+            value={cliente}
+            onChange={(e) => setCliente(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg p-2"
+          />
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            disabled={loading}
+            onClick={() => generarReporte("cliente")}
+            className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg"
+          >
+            {loading ? "Generando..." : "Reporte por Cliente"}
+          </motion.button>
+        </div>
       </motion.div>
     </main>
   );

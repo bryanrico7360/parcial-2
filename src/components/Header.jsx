@@ -76,17 +76,6 @@ export default function Header() {
 
       {/* 🏠 Ir al menú y salir */}
       <div className="flex items-center gap-2 w-1/4 justify-end">
-        {!isMenu && (
-          <motion.button
-            onClick={goHome}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-            className="p-2 bg-blue-500 cursor-pointer rounded-full hover:bg-blue-600 transition"
-            title="Ir al menú"
-          >
-            <Home className="w-5 h-5 text-white" />
-          </motion.button>
-        )}
         <motion.button
           onClick={handleLogout}
           whileHover={{ y: -3, scale: 1.05 }}
