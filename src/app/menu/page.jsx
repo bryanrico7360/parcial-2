@@ -12,7 +12,7 @@ export default function MenuPage() {
   const options = [
     { label: "Registrar Producto", route: "/productos/add" },
     { label: "Venta De Productos (Factura)", route: "/productos/ventas" },
-    { label: "Actualizar Producto", route: "/productos/actualizar" },
+    { label: "Actualizar Inventario", route: "/productos/actualizar" },
     { label: "Reporte Inventario (PDF)", route: "/productos/reporte" },
     { label: "Cerrar Sesión", action: handleLogout },
   ];

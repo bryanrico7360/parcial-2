@@ -4,12 +4,12 @@ import Product from "@/lib/models/product";
 import cloudinary from "@/lib/cloudinary";
 
 // 🔹 Obtener producto por ID
-export async function GET(req, { params }) {
+export async function GET(req, context) {
   try {
     await connectDB();
-    const { id } = params;
+    const { id } = await context.params;
 
-    const producto = await Product.findOne({ id });
+    const producto = await Product.findById(id);
     if (!producto) {
       return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 });
     }
@@ -22,10 +22,10 @@ export async function GET(req, { params }) {
 }
 
 // 🔹 Actualizar producto
-export async function PUT(req, { params }) {
+export async function PUT(req, context) {
   try {
     await connectDB();
-    const { id } = params;
+    const { id } = await context.params;
 
     const form = await req.formData();
     const mantenerFoto = form.get("mantenerFoto") === "true";
@@ -37,7 +37,7 @@ export async function PUT(req, { params }) {
       stock: form.get("stock") || undefined,
     };
 
-    const producto = await Product.findOne({ id });
+    const producto = await Product.findById(id);
     if (!producto) {
       return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 });
     }
@@ -49,12 +49,10 @@ export async function PUT(req, { params }) {
       const file = form.get("foto");
 
       if (file && file.name) {
-        // Borrar imagen anterior en Cloudinary
         if (producto.fotoPublicId) {
           await cloudinary.uploader.destroy(producto.fotoPublicId);
         }
 
-        // Subir nueva
         const bytes = Buffer.from(await file.arrayBuffer());
         const upload = await new Promise((resolve, reject) => {
           cloudinary.uploader.upload_stream(
@@ -74,9 +72,7 @@ export async function PUT(req, { params }) {
       }
     }
 
-    const updatedProduct = await Product.findOneAndUpdate({ id }, updateData, {
-      new: true,
-    });
+    const updatedProduct = await Product.findByIdAndUpdate(id, updateData, { new: true });
 
     return NextResponse.json({
       message: "Producto actualizado ✅",
@@ -89,18 +85,17 @@ export async function PUT(req, { params }) {
 }
 
 // 🔹 Eliminar producto
-export async function DELETE(req, { params }) {
+export async function DELETE(req, context) {
   try {
     await connectDB();
-    const { id } = params;
+    const { id } = await context.params;
 
-    const deletedProduct = await Product.findOneAndDelete({ id });
+    const deletedProduct = await Product.findByIdAndDelete(id);
 
     if (!deletedProduct) {
       return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 });
     }
 
-    // Borrar imagen de Cloudinary si existía
     if (deletedProduct.fotoPublicId) {
       await cloudinary.uploader.destroy(deletedProduct.fotoPublicId);
     }

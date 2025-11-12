@@ -1,85 +1,66 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-export default function ActualizarProductoPage() {
-  const [id, setId] = useState("");
+export default function GestionInventarioPage() {
+  const [productos, setProductos] = useState([]);
+  const [editando, setEditando] = useState(null);
   const [formData, setFormData] = useState({
     nombre: "",
     precio: "",
     descripcion: "",
     stock: "",
   });
-  const [mantenerFoto, setMantenerFoto] = useState(true); // OJO: clave enviada = "mantenerFoto"
+  const [mantenerFoto, setMantenerFoto] = useState(true);
   const [file, setFile] = useState(null);
-  const [message, setMessage] = useState("");
   const [preview, setPreview] = useState(null);
+  const [message, setMessage] = useState("");
+  const [dragActive, setDragActive] = useState(false);
 
-  // Validaciones
-  const isFormValid =
-    id.trim() !== "" &&
-    (formData.nombre.trim() !== "" ||
-      formData.precio !== "" ||
-      formData.descripcion.trim() !== "" ||
-      formData.stock !== "" ||
-      !mantenerFoto) &&
-    (mantenerFoto || file !== null);
+  useEffect(() => {
+    fetchProductos();
+  }, []);
 
-  const handleChange = (e) => {
-    let { name, value } = e.target;
-
-    // Evitar negativos
-    if ((name === "precio" || name === "stock") && value < 0) {
-      value = 0;
-    }
-
-    setFormData({ ...formData, [name]: value });
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile) {
-      setFile(droppedFile);
-      setPreview(URL.createObjectURL(droppedFile));
+  const fetchProductos = async () => {
+    try {
+      const res = await fetch("/api/products");
+      const data = await res.json();
+      setProductos(data);
+    } catch (error) {
+      console.error("Error cargando productos:", error);
     }
   };
 
-  const handleDragOver = (e) => e.preventDefault();
-
-  const handleFileChange = (e) => {
-    if (e.target.files.length > 0) {
-      const f = e.target.files[0];
-      setFile(f);
-      setPreview(URL.createObjectURL(f));
-    } else {
-      setFile(null);
-      setPreview(null);
-    }
+  const handleEdit = (producto) => {
+    setEditando(producto._id);
+    setFormData({
+      nombre: producto.nombre,
+      precio: producto.precio,
+      descripcion: producto.descripcion,
+      stock: producto.stock,
+    });
+    setPreview(producto.foto);
+    setMantenerFoto(true);
   };
 
-  const handleRemoveFile = () => {
+  const handleCancel = () => {
+    setEditando(null);
+    setFormData({ nombre: "", precio: "", descripcion: "", stock: "" });
     setFile(null);
     setPreview(null);
   };
 
-  const handleUpdate = async (e) => {
-    e.preventDefault();
-    setMessage("");
+  const handleChange = (e) => {
+    let { name, value } = e.target;
+    if ((name === "precio" || name === "stock") && value < 0) value = 0;
+    setFormData({ ...formData, [name]: value });
+  };
 
-    if (!isFormValid) return; // seguridad
-
+  const handleUpdate = async (id) => {
     try {
       const data = new FormData();
-      data.append("nombre", formData.nombre);
-      data.append("precio", formData.precio);
-      data.append("descripcion", formData.descripcion);
-      data.append("stock", formData.stock);
-      data.append("mantenerFoto", mantenerFoto.toString()); // importante: string "true"/"false"
-
-      // enviar con el name que espera el backend: "foto"
-      if (!mantenerFoto && file) {
-        data.append("foto", file);
-      }
+      Object.entries(formData).forEach(([key, val]) => data.append(key, val));
+      data.append("mantenerFoto", mantenerFoto.toString());
+      if (!mantenerFoto && file) data.append("foto", file);
 
       const res = await fetch(`/api/products/${id}`, {
         method: "PUT",
@@ -89,147 +70,233 @@ export default function ActualizarProductoPage() {
       const result = await res.json();
       if (res.ok) {
         setMessage("✅ Producto actualizado correctamente");
-        setId("");
-        setFormData({ nombre: "", precio: "", descripcion: "", stock: "" });
-        setFile(null);
-        setPreview(null);
-        setMantenerFoto(true);
+        await fetchProductos();
+        handleCancel();
       } else {
         setMessage(result.error || "❌ Error al actualizar");
       }
     } catch (error) {
-      setMessage("❌ Error de conexión");
       console.error(error);
+      setMessage("❌ Error de conexión");
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!confirm("¿Seguro que deseas eliminar este producto?")) return;
+    try {
+      const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setProductos(productos.filter((p) => p._id !== id));
+        setMessage("🗑️ Producto eliminado");
+      } else {
+        const result = await res.json();
+        setMessage(result.error || "❌ Error al eliminar");
+      }
+    } catch (error) {
+      console.error(error);
+      setMessage("❌ Error al eliminar producto");
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const f = e.target.files[0];
+    if (f) {
+      setFile(f);
+      setPreview(URL.createObjectURL(f));
+      setMantenerFoto(false);
+    }
+  };
+
+  const handleDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") setDragActive(true);
+    else if (e.type === "dragleave") setDragActive(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    const f = e.dataTransfer.files[0];
+    if (f) {
+      setFile(f);
+      setPreview(URL.createObjectURL(f));
+      setMantenerFoto(false);
     }
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gray-100">
-      <form
-        onSubmit={handleUpdate}
-        className="bg-white p-6 rounded-xl shadow w-96 space-y-4"
-      >
-        <h1 className="text-2xl font-bold text-black text-center">
-          Actualizar Producto
+    <main className="min-h-screen bg-gray-100 py-10">
+      <div className="max-w-6xl mx-auto bg-white p-6 rounded-2xl shadow-md">
+        <h1 className="text-3xl font-bold text-center mb-6 text-blue-700">
+          Gestión de Inventario
         </h1>
 
-        {message && <p className="text-center text-blue-600">{message}</p>}
-
-        <input
-          type="text"
-          name="id"
-          placeholder="ID del producto (ej: PROD001)"
-          value={id}
-          onChange={(e) => setId(e.target.value)}
-          className="border text-black p-2 w-full rounded"
-          required
-        />
-
-        <input
-          type="text"
-          name="nombre"
-          placeholder="Nuevo nombre"
-          value={formData.nombre}
-          onChange={handleChange}
-          className="border text-black p-2 w-full rounded"
-        />
-
-        <input
-          type="number"
-          name="precio"
-          placeholder="Nuevo precio"
-          value={formData.precio}
-          onChange={handleChange}
-          className="border text-black p-2 w-full rounded"
-          min="0"
-        />
-
-        <textarea
-          name="descripcion"
-          placeholder="Nueva descripción"
-          value={formData.descripcion}
-          onChange={handleChange}
-          className="border text-black p-2 w-full rounded"
-        />
-
-        <input
-          type="number"
-          name="stock"
-          placeholder="Nuevo stock"
-          value={formData.stock}
-          onChange={handleChange}
-          className="border text-black p-2 w-full rounded"
-          min="0"
-        />
-
-        {/* Checkbox mantener foto */}
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={mantenerFoto}
-            onChange={(e) => setMantenerFoto(e.target.checked)}
-          />
-          <span className="text-black">Mantener foto actual</span>
-        </label>
-
-        {/* Recuadro de imagen (igual que registrar) */}
-        {!mantenerFoto && (
-          <div
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-            className="border-2 border-dashed p-6 rounded text-center text-gray-500"
-          >
-            {file ? (
-              <div className="text-black flex flex-col items-center space-y-2">
-                <p>📸 {file.name}</p>
-                <button
-                  type="button"
-                  onClick={handleRemoveFile}
-                  className="text-red-500 text-sm hover:underline"
-                >
-                  Quitar archivo
-                </button>
-                {preview && (
-                  <img
-                    src={preview}
-                    alt="preview"
-                    className="mt-2 w-32 h-32 object-cover rounded"
-                  />
-                )}
-              </div>
-            ) : (
-              "Arrastra una imagen aquí o haz click"
-            )}
-
-            <input
-              type="file"
-              name="foto"               // <-- importante: name="foto"
-              accept="image/*"
-              onChange={handleFileChange}
-              className="hidden"
-              id="fileInput"
-            />
-            <label
-              htmlFor="fileInput"
-              className="cursor-pointer text-blue-600 block mt-2"
-            >
-              Seleccionar archivo
-            </label>
-          </div>
+        {message && (
+          <p className="text-center text-blue-600 mb-4 font-semibold">
+            {message}
+          </p>
         )}
 
-        <button
-          type="submit"
-          disabled={!isFormValid}
-          className={`w-full text-white py-2 rounded ${
-            isFormValid
-              ? "bg-green-600 cursor-pointer hover:bg-green-700 transform hover:scale-105 transition-transform"
-              : "bg-green-600/50 cursor-not-allowed"
-          }`}
-        >
-          Actualizar Producto
-        </button>
-      </form>
+        <div className="overflow-x-auto">
+          <table className="w-full border border-gray-300 text-gray-800 text-sm">
+            <thead className="bg-blue-100 text-blue-800 uppercase text-xs">
+              <tr>
+                <th className="border p-2">Imagen</th>
+                <th className="border p-2">ID</th>
+                <th className="border p-2">Nombre</th>
+                <th className="border p-2">Descripción</th>
+                <th className="border p-2">Precio</th>
+                <th className="border p-2">Stock</th>
+                <th className="border p-2">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {productos.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="text-center py-4 text-gray-500">
+                    No hay productos registrados
+                  </td>
+                </tr>
+              ) : (
+                productos.map((p) => (
+                  <tr
+                    key={p._id}
+                    className="hover:bg-gray-50 transition-all duration-200"
+                  >
+                    <td className="border p-2 text-center">
+                      <img
+                        src={p.foto}
+                        alt={p.nombre}
+                        className="w-12 h-12 object-cover mx-auto rounded-md shadow-sm"
+                      />
+                    </td>
+                    <td className="border p-2 text-center">{p.id}</td>
+                    <td className="border p-2 text-center">
+                      {editando === p._id ? (
+                        <input
+                          name="nombre"
+                          value={formData.nombre}
+                          onChange={handleChange}
+                          className="border border-blue-400 focus:ring focus:ring-blue-300 rounded p-1 w-full text-center text-sm"
+                        />
+                      ) : (
+                        p.nombre
+                      )}
+                    </td>
+                    <td className="border p-2 text-center">
+                      {editando === p._id ? (
+                        <textarea
+                          name="descripcion"
+                          value={formData.descripcion}
+                          onChange={handleChange}
+                          className="border border-blue-400 focus:ring focus:ring-blue-300 rounded p-1 w-full text-sm"
+                        />
+                      ) : (
+                        p.descripcion
+                      )}
+                    </td>
+                    <td className="border p-2 text-center">
+                      {editando === p._id ? (
+                        <input
+                          type="number"
+                          name="precio"
+                          value={formData.precio}
+                          onChange={handleChange}
+                          className="border border-blue-400 focus:ring focus:ring-blue-300 rounded p-1 w-20 text-center text-sm"
+                        />
+                      ) : (
+                        `$${p.precio}`
+                      )}
+                    </td>
+                    <td className="border p-2 text-center">
+                      {editando === p._id ? (
+                        <input
+                          type="number"
+                          name="stock"
+                          value={formData.stock}
+                          onChange={handleChange}
+                          className="border border-blue-400 focus:ring focus:ring-blue-300 rounded p-1 w-20 text-center text-sm"
+                        />
+                      ) : (
+                        p.stock
+                      )}
+                    </td>
+                    <td className="border p-2 text-center space-y-2">
+                      {editando === p._id ? (
+                        <>
+                          <div
+                            onDragEnter={handleDrag}
+                            onDragLeave={handleDrag}
+                            onDragOver={handleDrag}
+                            onDrop={handleDrop}
+                            className={`relative border-2 border-dashed rounded-md p-2 text-xs cursor-pointer transition-all ${
+                              dragActive
+                                ? "border-blue-500 bg-blue-50"
+                                : "border-blue-300 hover:border-blue-400"
+                            }`}
+                          >
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleFileChange}
+                              className="absolute inset-0 opacity-0 cursor-pointer"
+                            />
+                            <p className="text-blue-600 font-medium">
+                              {file
+                                ? file.name
+                                : "Haz clic o arrastra una imagen aquí"}
+                            </p>
+                          </div>
+
+                          {preview && (
+                            <img
+                              src={preview}
+                              alt="preview"
+                              className="w-14 h-14 mx-auto rounded mt-2 shadow-sm"
+                            />
+                          )}
+
+                          <div className="flex justify-center gap-2 mt-2">
+                            <button
+                              onClick={() => handleUpdate(p._id)}
+                              className="bg-green-600 hover:bg-green-700 hover:scale-110 active:scale-95 transition-transform duration-200 text-white px-3 py-1 rounded text-xs cursor-pointer"
+                            >
+                              Guardar
+                            </button>
+                            <button
+                              onClick={handleCancel}
+                              className="bg-gray-500 hover:bg-gray-600 hover:scale-110 active:scale-95 transition-transform duration-200 text-white px-3 py-1 rounded text-xs cursor-pointer"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex justify-center gap-2">
+                          <button
+                            onClick={() => handleEdit(p)}
+                            className="bg-blue-600 hover:bg-blue-700 hover:scale-110 active:scale-95 transition-transform duration-200 text-white px-3 py-1 rounded text-xs cursor-pointer"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => handleDelete(p._id)}
+                            className="bg-red-600 hover:bg-red-700 hover:scale-110 active:scale-95 transition-transform duration-200 text-white px-3 py-1 rounded text-xs cursor-pointer"
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </main>
   );
 }
