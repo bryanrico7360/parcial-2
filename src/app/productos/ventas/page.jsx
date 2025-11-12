@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
+import Header from "@/components/Header";
 
 export default function VentaProductosPage() {
   const [productos, setProductos] = useState([]);
@@ -7,7 +9,6 @@ export default function VentaProductosPage() {
   const [message, setMessage] = useState("");
   const [cliente, setCliente] = useState("");
 
-  // 🔹 Cargar productos desde la BD
   useEffect(() => {
     const fetchProductos = async () => {
       try {
@@ -23,7 +24,6 @@ export default function VentaProductosPage() {
     fetchProductos();
   }, []);
 
-  // 🔹 Manejar cantidad seleccionada
   const handleCantidadChange = (id, cantidad) => {
     setSeleccion((prev) => ({
       ...prev,
@@ -31,7 +31,6 @@ export default function VentaProductosPage() {
     }));
   };
 
-  // 🔹 Generar venta y factura PDF
   const handleVenta = async (e) => {
     e.preventDefault();
     setMessage("");
@@ -63,7 +62,7 @@ export default function VentaProductosPage() {
       if (res.ok) {
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
-        window.open(url); // abre el PDF
+        window.open(url);
         setMessage("✅ Venta realizada y factura generada");
         setSeleccion({});
         setCliente("");
@@ -78,10 +77,15 @@ export default function VentaProductosPage() {
   };
 
   return (
-    <main className="min-h-screen flex flex-col items-center bg-gray-100 p-6">
-      <form
+    <main className="min-h-screen flex flex-col items-center bg-gradient-to-br from-gray-100 to-gray-200 p-6 pt-28">
+      <Header />
+
+      <motion.form
         onSubmit={handleVenta}
-        className="bg-white p-8 rounded-xl shadow-xl w-full max-w-4xl space-y-6"
+        className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-4xl space-y-6 border border-gray-100"
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.4 }}
       >
         <h1 className="text-3xl font-bold text-center text-black">
           Venta de Productos
@@ -148,15 +152,17 @@ export default function VentaProductosPage() {
           </table>
         </div>
 
-        <button
+        <motion.button
           type="submit"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
           className="w-full bg-green-600 text-white py-3 rounded-lg
                      hover:bg-green-700 transform transition-transform 
-                     duration-200 hover:scale-105 shadow-md font-semibold cursor-pointer"
+                     duration-200 shadow-md font-semibold cursor-pointer"
         >
           Generar Venta y Factura PDF
-        </button>
-      </form>
+        </motion.button>
+      </motion.form>
     </main>
   );
 }

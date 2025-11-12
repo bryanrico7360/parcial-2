@@ -2,7 +2,7 @@
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Package, FileText, ShoppingCart, RefreshCcw } from "lucide-react";
-import Header from "@/components/Header"; // ✅ importación correcta
+import Header from "@/components/Header";
 
 export default function MenuPage() {
   const router = useRouter();

@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Header from "@/components/Header";
 
 export default function ReportePage() {
   const [loading, setLoading] = useState(false);
@@ -26,6 +27,7 @@ export default function ReportePage() {
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-gray-100">
+      <Header />
       <div className="bg-white p-6 rounded-xl shadow w-96 text-center space-y-4">
         <h1 className="text-2xl font-bold text-black">
           Reporte de Inventario

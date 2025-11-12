@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
+import Header from "@/components/Header";
 
 export default function GestionInventarioPage() {
   const [productos, setProductos] = useState([]);
@@ -127,8 +129,15 @@ export default function GestionInventarioPage() {
   };
 
   return (
-    <main className="min-h-screen bg-gray-100 py-10">
-      <div className="max-w-6xl mx-auto bg-white p-6 rounded-2xl shadow-md">
+    <main className="min-h-screen pt-28 bg-gradient-to-br from-gray-100 to-gray-200 py-10">
+      <Header />
+
+      <motion.div
+        className="max-w-6xl mx-auto bg-white p-6 rounded-2xl shadow-2xl border border-gray-100"
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.4 }}
+      >
         <h1 className="text-3xl font-bold text-center mb-6 text-blue-700">
           Gestión de Inventario
         </h1>
@@ -160,9 +169,12 @@ export default function GestionInventarioPage() {
                   </td>
                 </tr>
               ) : (
-                productos.map((p) => (
-                  <tr
+                productos.map((p, index) => (
+                  <motion.tr
                     key={p._id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
                     className="hover:bg-gray-50 transition-all duration-200"
                   >
                     <td className="border p-2 text-center">
@@ -259,44 +271,52 @@ export default function GestionInventarioPage() {
                           )}
 
                           <div className="flex justify-center gap-2 mt-2">
-                            <button
+                            <motion.button
                               onClick={() => handleUpdate(p._id)}
-                              className="bg-green-600 hover:bg-green-700 hover:scale-110 active:scale-95 transition-transform duration-200 text-white px-3 py-1 rounded text-xs cursor-pointer"
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs cursor-pointer"
                             >
                               Guardar
-                            </button>
-                            <button
+                            </motion.button>
+                            <motion.button
                               onClick={handleCancel}
-                              className="bg-gray-500 hover:bg-gray-600 hover:scale-110 active:scale-95 transition-transform duration-200 text-white px-3 py-1 rounded text-xs cursor-pointer"
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded text-xs cursor-pointer"
                             >
                               Cancelar
-                            </button>
+                            </motion.button>
                           </div>
                         </>
                       ) : (
                         <div className="flex justify-center gap-2">
-                          <button
+                          <motion.button
                             onClick={() => handleEdit(p)}
-                            className="bg-blue-600 hover:bg-blue-700 hover:scale-110 active:scale-95 transition-transform duration-200 text-white px-3 py-1 rounded text-xs cursor-pointer"
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs cursor-pointer"
                           >
                             Editar
-                          </button>
-                          <button
+                          </motion.button>
+                          <motion.button
                             onClick={() => handleDelete(p._id)}
-                            className="bg-red-600 hover:bg-red-700 hover:scale-110 active:scale-95 transition-transform duration-200 text-white px-3 py-1 rounded text-xs cursor-pointer"
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs cursor-pointer"
                           >
                             Eliminar
-                          </button>
+                          </motion.button>
                         </div>
                       )}
                     </td>
-                  </tr>
+                  </motion.tr>
                 ))
               )}
             </tbody>
           </table>
         </div>
-      </div>
+      </motion.div>
     </main>
   );
 }

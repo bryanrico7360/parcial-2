@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
+import Header from "@/components/Header";
 
 export default function RegistrarProductoPage() {
   const [formData, setFormData] = useState({
@@ -12,7 +14,6 @@ export default function RegistrarProductoPage() {
   const [preview, setPreview] = useState(null);
   const [message, setMessage] = useState("");
 
-  // cámara
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const [photo, setPhoto] = useState(null);
@@ -27,6 +28,7 @@ export default function RegistrarProductoPage() {
     parseInt(formData.stock) >= 0 &&
     (file !== null || photo !== null);
 
+  // Cámara
   useEffect(() => {
     if (!isCameraOn) return;
     const iniciarCamara = async () => {
@@ -41,8 +43,7 @@ export default function RegistrarProductoPage() {
 
     return () => {
       if (videoRef.current && videoRef.current.srcObject) {
-        const tracks = videoRef.current.srcObject.getTracks();
-        tracks.forEach((t) => t.stop());
+        videoRef.current.srcObject.getTracks().forEach((t) => t.stop());
       }
     };
   }, [isCameraOn]);
@@ -69,52 +70,36 @@ export default function RegistrarProductoPage() {
     setPreview(null);
   };
 
-const tomarFoto = () => {
-  if (!videoRef.current || !canvasRef.current) return;
+  const tomarFoto = () => {
+    if (!videoRef.current || !canvasRef.current) return;
 
-  const video = videoRef.current;
-  const canvas = canvasRef.current;
-  const context = canvas.getContext("2d");
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const context = canvas.getContext("2d");
 
-  const videoWidth = video.videoWidth;
-  const videoHeight = video.videoHeight;
+    const videoWidth = video.videoWidth;
+    const videoHeight = video.videoHeight;
+    const size = Math.min(videoWidth, videoHeight);
+    const offsetX = (videoWidth - size) / 2;
+    const offsetY = (videoHeight - size) / 2;
 
-  // 🔹 Calculamos un recorte cuadrado centrado
-  const size = Math.min(videoWidth, videoHeight);
-  const offsetX = (videoWidth - size) / 2;
-  const offsetY = (videoHeight - size) / 2;
+    canvas.width = size;
+    canvas.height = size;
 
-  canvas.width = size;
-  canvas.height = size;
+    context.save();
+    context.scale(-1, 1);
+    context.drawImage(video, offsetX, offsetY, size, size, -size, 0, size, size);
+    context.restore();
 
-  // 🔹 Dibuja la imagen espejada y recortada
-  context.save();
-  context.scale(-1, 1);
-  context.drawImage(
-    video,
-    offsetX,
-    offsetY,
-    size,
-    size,
-    -size,
-    0,
-    size,
-    size
-  );
-  context.restore();
+    const imageData = canvas.toDataURL("image/png", 0.9);
+    setPhoto(imageData);
+    setPreview(imageData);
+    setIsCameraOn(false);
 
-  const imageData = canvas.toDataURL("image/png", 0.9);
-  setPhoto(imageData);
-  setPreview(imageData);
-  setIsCameraOn(false);
-
-  // 🔹 Apagamos la cámara para liberar recursos
-  const stream = video.srcObject;
-  if (stream) {
-    stream.getTracks().forEach((track) => track.stop());
-  }
-};
-
+    // Apagar cámara
+    const stream = video.srcObject;
+    if (stream) stream.getTracks().forEach((track) => track.stop());
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -157,10 +142,15 @@ const tomarFoto = () => {
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gray-100">
-      <form
+    <main className="min-h-screen flex flex-col items-center bg-gradient-to-br from-gray-100 to-gray-200 p-6 pt-28">
+      <Header />
+
+      <motion.form
         onSubmit={handleSubmit}
-        className="bg-white p-6 rounded-xl shadow w-96 space-y-4"
+        className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md space-y-6 border border-gray-100"
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.4 }}
       >
         <h1 className="text-2xl font-bold text-black text-center">
           Registrar Producto
@@ -233,7 +223,7 @@ const tomarFoto = () => {
                 autoPlay
                 playsInline
                 className="w-full h-48 bg-black rounded mb-2"
-                style={{ transform: "scaleX(-1)" }} 
+                style={{ transform: "scaleX(-1)" }}
               />
               <button
                 type="button"
@@ -270,18 +260,20 @@ const tomarFoto = () => {
           )}
         </div>
 
-        <button
+        <motion.button
           type="submit"
           disabled={!isFormValid}
+          whileHover={isFormValid ? { scale: 1.05 } : {}}
+          whileTap={isFormValid ? { scale: 0.95 } : {}}
           className={`w-full text-white py-2 rounded ${
             isFormValid
-              ? "bg-blue-600 hover:bg-blue-700 transform hover:scale-105 transition-transform cursor-pointer"
+              ? "bg-blue-600 hover:bg-blue-700 transition-transform cursor-pointer"
               : "bg-blue-600/50 cursor-not-allowed"
           }`}
         >
           Registrar Producto
-        </button>
-      </form>
+        </motion.button>
+      </motion.form>
     </main>
   );
 }
