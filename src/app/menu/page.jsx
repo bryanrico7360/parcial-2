@@ -11,10 +11,10 @@ export default function MenuPage() {
 
   const options = [
     { label: "Registrar Producto", route: "/productos/add" },
-    { label: "Eliminar Producto", route: "/productos/eliminar" },
+    { label: "Venta De Productos (Factura)", route: "/productos/ventas" },
     { label: "Actualizar Producto", route: "/productos/actualizar" },
     { label: "Reporte Inventario (PDF)", route: "/productos/reporte" },
-    { label: "Salir", action: handleLogout },
+    { label: "Cerrar Sesión", action: handleLogout },
   ];
 
   return (
