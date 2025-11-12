@@ -18,8 +18,17 @@ export async function POST(req) {
     return NextResponse.json({ error: "Contraseña incorrecta" }, { status: 401 });
   }
 
-  // Generar token (ejemplo simple)
-  const token = jwt.sign({ id: user._id, email: user.email }, "secretkey", { expiresIn: "1h" });
+  // 🔐 Generar token con la información básica
+  const token = jwt.sign(
+    { id: user._id, email: user.email },
+    "secretkey",
+    { expiresIn: "1h" }
+  );
 
-  return NextResponse.json({ ok: true, token });
+  // ✅ Devolver también el nombre del usuario
+  return NextResponse.json({
+    ok: true,
+    token,
+    nombreUsuario: user.nombreUsuario, // 👈 este es el cambio clave
+  });
 }

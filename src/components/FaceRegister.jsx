@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import * as faceapi from "face-api.js";
+import { motion } from "framer-motion";
 
 export function FaceRegister({ onCapture }) {
   const videoRef = useRef(null);
@@ -24,12 +25,9 @@ export function FaceRegister({ onCapture }) {
       setModelsReady(true);
     }
     loadModels();
-
-    // 🧹 Limpieza al desmontar
     return () => stopCamera();
   }, []);
 
-  // 🔴 Función para detener cámara
   const stopCamera = () => {
     const video = videoRef.current;
     if (video && video.srcObject) {
@@ -39,7 +37,6 @@ export function FaceRegister({ onCapture }) {
     setCameraActive(false);
   };
 
-  // 🎥 Activar cámara
   const handleActivateCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -51,13 +48,11 @@ export function FaceRegister({ onCapture }) {
           setMessage("Alinea tu rostro frente a la cámara");
         };
       }
-    } catch (err) {
-      console.error("Error al activar la cámara:", err);
+    } catch {
       setMessage("❌ No se pudo acceder a la cámara. Revisa los permisos.");
     }
   };
 
-  // 🔍 Detección facial
   useEffect(() => {
     if (!modelsReady || !cameraActive || captured) return;
 
@@ -82,18 +77,17 @@ export function FaceRegister({ onCapture }) {
         faceapi.draw.drawFaceLandmarks(canvas, resized);
 
         if (capturing && !hasCaptured) {
-  if (detection.descriptor) {
-    hasCaptured = true;
-    setCapturing(false);
-    setCaptured(true);
-    setMessage("✅ Rostro capturado correctamente");
-    onCapture(Array.from(detection.descriptor)); // ✅ ahora sí llega el embedding
-    stopCamera();
-  } else {
-    setMessage("⚠ No se pudo capturar el rostro. Intenta nuevamente.");
-  }
-}
-
+          if (detection.descriptor) {
+            hasCaptured = true;
+            setCapturing(false);
+            setCaptured(true);
+            setMessage("✅ Rostro capturado correctamente");
+            onCapture(Array.from(detection.descriptor));
+            stopCamera();
+          } else {
+            setMessage("⚠ No se pudo capturar el rostro. Intenta nuevamente.");
+          }
+        }
       } else {
         setFaceDetected(false);
         if (!captured) setMessage("Alinea tu rostro frente a la cámara");
@@ -103,7 +97,6 @@ export function FaceRegister({ onCapture }) {
     return () => clearInterval(interval);
   }, [modelsReady, cameraActive, capturing, captured, onCapture]);
 
-  // 📸 Capturar rostro
   const handleCapture = () => {
     if (faceDetected && !captured) {
       setCapturing(true);
@@ -113,7 +106,7 @@ export function FaceRegister({ onCapture }) {
 
   return (
     <div className="flex flex-col items-center space-y-3">
-      <div className="relative w-[320px] h-[240px] rounded-md overflow-hidden border border-gray-400">
+      <div className="relative w-[320px] h-[240px] rounded-md overflow-hidden border border-gray-400 shadow-md">
         <video
           ref={videoRef}
           width={320}
@@ -141,7 +134,7 @@ export function FaceRegister({ onCapture }) {
       </div>
 
       <p
-        className={`text-sm font-medium ${
+        className={`text-sm font-medium text-center ${
           captured
             ? "text-green-600"
             : faceDetected
@@ -152,31 +145,36 @@ export function FaceRegister({ onCapture }) {
         {message}
       </p>
 
+      {/* 🎨 Botones con animación y estilo unificado */}
       {!cameraActive ? (
-        <button
+        <motion.button
           onClick={handleActivateCamera}
           disabled={!modelsReady}
-          className={`px-4 py-1.5 rounded-md text-white font-medium transition ${
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className={`px-6 py-3 rounded-xl font-semibold shadow-md text-white transition cursor-pointer ${
             modelsReady
-              ? "bg-blue-600 hover:bg-blue-700 cursor-pointer"
+              ? "bg-gradient-to-r from-blue-500 to-blue-600 hover:brightness-110"
               : "bg-gray-400 cursor-not-allowed"
           }`}
         >
           Activar cámara
-        </button>
+        </motion.button>
       ) : (
         !captured && (
-          <button
+          <motion.button
             onClick={handleCapture}
             disabled={!faceDetected}
-            className={`px-4 py-1.5 rounded-md text-white font-medium transition ${
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className={`px-6 py-3 rounded-xl font-semibold shadow-md text-white transition cursor-pointer ${
               faceDetected
-                ? "bg-blue-600 hover:bg-blue-700 cursor-pointer"
+                ? "bg-gradient-to-r from-blue-500 to-blue-600 hover:brightness-110"
                 : "bg-gray-400 cursor-not-allowed"
             }`}
           >
             Capturar rostro
-          </button>
+          </motion.button>
         )
       )}
     </div>

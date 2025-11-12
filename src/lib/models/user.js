@@ -1,13 +1,40 @@
 import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema({
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  secretQuestion: { type: String },
-  secretAnswer: { type: String },
-  resetToken: { type: String },
-  resetTokenExp: { type: Date },
-  faceEmbedding: { type: [Number], default: [] }, // 🔹 Nuevo campo para rostro
+  nombreUsuario: {
+    type: String,
+    required: false, // puedes poner true si lo haces obligatorio
+    trim: true,
+  },
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    lowercase: true,
+  },
+  password: {
+    type: String,
+    required: true,
+  },
+  secretQuestion: {
+    type: String,
+    default: "",
+  },
+  secretAnswer: {
+    type: String,
+    default: "",
+  },
+  resetToken: {
+    type: String,
+    default: "",
+  },
+  resetTokenExp: {
+    type: Date,
+  },
+  faceEmbedding: {
+    type: [Number],
+    default: [],
+  },
 });
 
 export default mongoose.models.User || mongoose.model("User", userSchema);

@@ -16,16 +16,21 @@ export async function POST(req) {
 
     const { faceEmbedding } = await req.json();
     if (!faceEmbedding) {
-      return NextResponse.json({ error: "Falta el embedding facial" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Falta el embedding facial" },
+        { status: 400 }
+      );
     }
 
-    // Traemos todos los usuarios (puedes optimizar luego)
+    // Buscar todos los usuarios registrados
     const users = await User.find();
     if (!users.length) {
-      return NextResponse.json({ error: "No hay usuarios registrados" }, { status: 404 });
+      return NextResponse.json(
+        { error: "No hay usuarios registrados" },
+        { status: 404 }
+      );
     }
 
-    // Compara embeddings
     let matchedUser = null;
     let highestSim = -1;
 
@@ -35,22 +40,31 @@ export async function POST(req) {
       const similarity = cosineSimilarity(user.faceEmbedding, faceEmbedding);
       console.log(`🔹 Similitud con ${user.email}: ${similarity}`);
 
-      if (similarity > 0.9 && similarity > highestSim) { // umbral de 0.9 (ajustable)
+      if (similarity > 0.9 && similarity > highestSim) {
         matchedUser = user;
         highestSim = similarity;
       }
     }
 
     if (!matchedUser) {
-      return NextResponse.json({ error: "Rostro no reconocido" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Rostro no reconocido" },
+        { status: 401 }
+      );
     }
 
-    // Si se reconoce correctamente, genera el token
+    // ✅ Retorna también el nombre de usuario
     const token = `FAKE_TOKEN_${matchedUser._id}`;
-    return NextResponse.json({ ok: true, token });
-
+    return NextResponse.json({
+      ok: true,
+      token,
+      nombreUsuario: matchedUser.nombreUsuario, // 🔹 clave faltante
+    });
   } catch (error) {
     console.error("❌ Error en login facial:", error);
-    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Error interno del servidor" },
+      { status: 500 }
+    );
   }
 }

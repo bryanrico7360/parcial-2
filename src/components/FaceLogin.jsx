@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import * as faceapi from "face-api.js";
 
 export function FaceLogin({ onCapture }) {
@@ -76,24 +77,23 @@ export function FaceLogin({ onCapture }) {
         const resized = faceapi.resizeResults(detection, displaySize);
         faceapi.draw.drawFaceLandmarks(canvas, resized);
 
-if (capturing) {
-  setCapturing(false);
-  setMessage("Verificando rostro...");
-  const embedding = Array.from(detection.descriptor);
+        if (capturing) {
+          setCapturing(false);
+          setMessage("Verificando rostro...");
+          const embedding = Array.from(detection.descriptor);
 
-  // 🔹 Esperamos la respuesta del backend
-  const success = await onCapture(embedding);
+          // 🔹 Esperamos la respuesta del backend
+          const success = await onCapture(embedding);
 
-  if (success) {
-    setRecognized(true);
-    setMessage("✅ Rostro reconocido correctamente");
-    stopCamera();
-  } else {
-    setRecognized(false);
-    setMessage("❌ Rostro no reconocido. Intenta nuevamente.");
-  }
-}
-
+          if (success) {
+            setRecognized(true);
+            setMessage("✅ Rostro reconocido correctamente");
+            stopCamera();
+          } else {
+            setRecognized(false);
+            setMessage("❌ Rostro no reconocido. Intenta nuevamente.");
+          }
+        }
       } else {
         setFaceDetected(false);
         if (!recognized) setMessage("Alinea tu rostro frente a la cámara");
@@ -112,7 +112,7 @@ if (capturing) {
 
   return (
     <div className="flex flex-col items-center space-y-3">
-      <div className="relative w-[320px] h-[240px] rounded-md overflow-hidden border border-gray-400">
+      <div className="relative w-[320px] h-[240px] rounded-md overflow-hidden border border-gray-400 shadow-md">
         <video
           ref={videoRef}
           width={320}
@@ -140,7 +140,7 @@ if (capturing) {
       </div>
 
       <p
-        className={`text-sm font-medium ${
+        className={`text-sm font-medium text-center ${
           recognized
             ? "text-green-600"
             : faceDetected
@@ -151,31 +151,36 @@ if (capturing) {
         {message}
       </p>
 
+      {/* 🔹 Botón con animación tipo register */}
       {!cameraActive ? (
-        <button
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
           onClick={handleActivateCamera}
           disabled={!modelsReady}
-          className={`px-4 py-1.5 rounded-md text-white font-medium transition ${
+          className={`px-6 py-3 rounded-xl font-semibold shadow-md text-white transition cursor-pointer ${
             modelsReady
-              ? "bg-blue-600 hover:bg-blue-700 cursor-pointer"
+              ? "bg-gradient-to-r from-blue-500 to-blue-600 hover:brightness-110"
               : "bg-gray-400 cursor-not-allowed"
           }`}
         >
           Activar cámara
-        </button>
+        </motion.button>
       ) : (
         !recognized && (
-          <button
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={handleCapture}
             disabled={!faceDetected}
-            className={`px-4 py-1.5 rounded-md text-white font-medium transition ${
+            className={`px-6 py-3 rounded-xl font-semibold shadow-md text-white transition cursor-pointer ${
               faceDetected
-                ? "bg-blue-600 hover:bg-blue-700 cursor-pointer"
+                ? "bg-gradient-to-r from-blue-500 to-blue-600 hover:brightness-110"
                 : "bg-gray-400 cursor-not-allowed"
             }`}
           >
             Capturar rostro
-          </button>
+          </motion.button>
         )
       )}
     </div>
