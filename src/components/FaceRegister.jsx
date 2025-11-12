@@ -82,13 +82,18 @@ export function FaceRegister({ onCapture }) {
         faceapi.draw.drawFaceLandmarks(canvas, resized);
 
         if (capturing && !hasCaptured) {
-          hasCaptured = true;
-          setCapturing(false);
-          setCaptured(true);
-          setMessage("✅ Rostro capturado correctamente");
-          onCapture(Array.from(detection.descriptor));
-          stopCamera(); // 🔴 detener cámara después de capturar
-        }
+  if (detection.descriptor) {
+    hasCaptured = true;
+    setCapturing(false);
+    setCaptured(true);
+    setMessage("✅ Rostro capturado correctamente");
+    onCapture(Array.from(detection.descriptor)); // ✅ ahora sí llega el embedding
+    stopCamera();
+  } else {
+    setMessage("⚠ No se pudo capturar el rostro. Intenta nuevamente.");
+  }
+}
+
       } else {
         setFaceDetected(false);
         if (!captured) setMessage("Alinea tu rostro frente a la cámara");

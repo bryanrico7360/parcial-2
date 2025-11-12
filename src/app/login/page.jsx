@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
-import { FaceLogin } from "@/components/FaceLogin"; // ok si FaceLogin es named export
+import { FaceLogin } from "@/components/FaceLogin";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -24,29 +24,31 @@ export default function LoginPage() {
     const data = await res.json();
     if (data.token) {
       localStorage.setItem("token", data.token);
+      localStorage.setItem("nombreUsuario", data.nombreUsuario || email); // ✅ guardar nombre
       router.push("/menu");
     } else {
       alert(data.error || "Error en login");
     }
   };
 
-const handleFaceLogin = async (faceEmbedding) => {
-  const res = await fetch("/api/auth/login-face", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ faceEmbedding }),
-  });
+  const handleFaceLogin = async (faceEmbedding) => {
+    const res = await fetch("/api/auth/login-face", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ faceEmbedding }),
+    });
 
-  const data = await res.json();
+    const data = await res.json();
 
-  if (data.token) {
-    localStorage.setItem("token", data.token);
-    router.push("/menu");
-    return true; // ✅ login correcto
-  } else {
-    return false; // ❌ login fallido
-  }
-};
+    if (data.token) {
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("nombreUsuario", data.nombreUsuario || "Usuario"); // ✅ guardar nombre
+      router.push("/menu");
+      return true;
+    } else {
+      return false;
+    }
+  };
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-gray-100">

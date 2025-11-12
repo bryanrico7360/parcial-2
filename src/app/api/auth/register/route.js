@@ -7,25 +7,30 @@ export async function POST(req) {
   await connectDB();
 
   try {
-    const { email, password, secretQuestion, secretAnswer, faceEmbedding } = await req.json();
+    const { nombreUsuario, email, password, faceEmbedding } = await req.json();
 
-    if (!email || !password) {
-      return NextResponse.json({ error: "Email y contraseña son obligatorios" }, { status: 400 });
+    if (!nombreUsuario || !email || !password) {
+      return NextResponse.json(
+        { error: "Faltan campos obligatorios" },
+        { status: 400 }
+      );
     }
 
     const userExist = await User.findOne({ email });
     if (userExist) {
-      return NextResponse.json({ error: "El usuario ya existe" }, { status: 400 });
+      return NextResponse.json(
+        { error: "El usuario ya existe" },
+        { status: 400 }
+      );
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const newUser = new User({
+      nombreUsuario,
       email,
       password: hashedPassword,
-      secretQuestion,
-      secretAnswer,
-      faceEmbedding, // 🔹 Guardar el embedding facial
+      faceEmbedding,
     });
 
     await newUser.save();

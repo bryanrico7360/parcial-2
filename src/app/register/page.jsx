@@ -5,6 +5,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { FaceRegister } from "@/components/FaceRegister";
 
 export default function RegisterPage() {
+  const [nombreUsuario, setNombreUsuario] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -21,20 +22,22 @@ export default function RegisterPage() {
       return;
     }
 
-    if (!faceEmbedding) {
-      return;
-    }
+    if (!faceEmbedding) return;
 
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, faceEmbedding }),
+      body: JSON.stringify({ nombreUsuario, email, password, faceEmbedding }),
     });
 
     const data = await res.json();
     if (res.ok) {
+      // ✅ Guardar nombre y token en localStorage
+      localStorage.setItem("nombreUsuario", nombreUsuario);
+      if (data.token) localStorage.setItem("token", data.token);
+
       alert("Usuario registrado con éxito");
-      router.push("/login");
+      router.push("/menu"); // redirigir directo al menú
     } else {
       alert(data.error || "Error en registro");
     }
@@ -46,9 +49,16 @@ export default function RegisterPage() {
         onSubmit={handleRegister}
         className="bg-white p-6 rounded-xl shadow w-80 space-y-4"
       >
-        <h1 className="text-black text-2xl font-bold text-center">
-          Registrarse
-        </h1>
+        <h1 className="text-black text-2xl font-bold text-center">Registrarse</h1>
+
+        <input
+          type="text"
+          placeholder="Nombre de usuario"
+          value={nombreUsuario}
+          onChange={(e) => setNombreUsuario(e.target.value)}
+          className="border text-black p-2 w-full rounded"
+          required
+        />
 
         <input
           type="email"
@@ -56,9 +66,9 @@ export default function RegisterPage() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="border text-black p-2 w-full rounded"
+          required
         />
 
-        {/* Contraseña */}
         <div className="relative">
           <input
             type={showPassword ? "text" : "password"}
@@ -66,6 +76,7 @@ export default function RegisterPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="border text-black p-2 w-full rounded pr-10"
+            required
           />
           <button
             type="button"
@@ -76,7 +87,6 @@ export default function RegisterPage() {
           </button>
         </div>
 
-        {/* Confirmar contraseña */}
         <div className="relative">
           <input
             type={showConfirm ? "text" : "password"}
@@ -84,6 +94,7 @@ export default function RegisterPage() {
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             className="border text-black p-2 w-full rounded pr-10"
+            required
           />
           <button
             type="button"
@@ -94,7 +105,6 @@ export default function RegisterPage() {
           </button>
         </div>
 
-        {/* Captura de rostro */}
         <div className="mt-4">
           <p className="text-black text-sm mb-2">Captura tu rostro:</p>
           <FaceRegister onCapture={setFaceEmbedding} />
@@ -102,8 +112,12 @@ export default function RegisterPage() {
 
         <button
           type="submit"
-          className="w-full bg-blue-600 text-white py-2 rounded-lg shadow-md 
-                     transform transition hover:scale-105 hover:bg-blue-700 cursor-pointer"
+          disabled={!faceEmbedding}
+          className={`w-full py-2 rounded-lg shadow-md transform transition ${
+            faceEmbedding
+              ? "bg-blue-600 text-white hover:scale-105 hover:bg-blue-700 cursor-pointer"
+              : "bg-gray-400 text-gray-200 cursor-not-allowed"
+          }`}
         >
           Crear cuenta
         </button>
