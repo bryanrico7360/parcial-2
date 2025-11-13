@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import PDFDocument from "pdfkit";
-import fs from "fs";
 import path from "path";
 import { connectDB } from "@/lib/db";
 import Product from "@/lib/models/product";
@@ -98,15 +97,6 @@ export async function POST(req) {
       total: totalGeneral,
     });
 
-    // Generar PDF factura (igual que tu código original)
-    const facturasDir = path.join(process.cwd(), "facturas");
-    if (!fs.existsSync(facturasDir)) fs.mkdirSync(facturasDir);
-
-    const files = fs.readdirSync(facturasDir);
-    const count = files.filter((f) => f.startsWith("factura")).length + 1;
-    const facturaName = `factura${String(count).padStart(3, "0")}.pdf`;
-    const facturaPath = path.join(facturasDir, facturaName);
-
     const robotoPath = path.join(
       process.cwd(),
       "public",
@@ -114,7 +104,7 @@ export async function POST(req) {
       "ROBOTO-VARIABLEFONT_WDTH,WGHT.TTF"
     );
 
-    if (!fs.existsSync(robotoPath)) {
+    if (!robotoPath) {
       throw new Error("No se encontró la fuente Roboto en /public/fonts");
     }
 
@@ -131,9 +121,6 @@ export async function POST(req) {
       const chunks = [];
       const doc = new PDFDocument({ margin: 40, font: robotoPath, size: "A4" });
 
-      const stream = fs.createWriteStream(facturaPath);
-      doc.pipe(stream);
-
       doc.on("data", (chunk) => chunks.push(chunk));
       doc.on("end", () => {
         resolve(
@@ -141,7 +128,7 @@ export async function POST(req) {
             status: 200,
             headers: {
               "Content-Type": "application/pdf",
-              "Content-Disposition": `inline; filename=${facturaName}`,
+              "Content-Disposition": `inline; filename=factura.pdf`,
             },
           })
         );
