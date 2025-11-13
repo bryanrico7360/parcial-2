@@ -4,11 +4,15 @@ import { motion } from "framer-motion";
 import Header from "@/components/Header";
 
 export default function ReportePage() {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState({
+    ventas: false,
+    productos: false,
+    cliente: false,
+  });
   const [cliente, setCliente] = useState("");
 
   const generarReporte = async (tipo) => {
-    setLoading(true);
+    setLoading((prev) => ({ ...prev, [tipo]: true }));
     try {
       let url = `/api/reports/xlsx?tipo=${tipo}`;
       if (tipo === "cliente" && cliente.trim()) {
@@ -26,7 +30,7 @@ export default function ReportePage() {
     } catch (err) {
       alert("❌ Error al generar reporte");
     } finally {
-      setLoading(false);
+      setLoading((prev) => ({ ...prev, [tipo]: false }));
     }
   };
 
@@ -47,21 +51,21 @@ export default function ReportePage() {
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          disabled={loading}
+          disabled={loading.ventas}
           onClick={() => generarReporte("ventas")}
-          className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg"
+          className="w-full cursor-pointer bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg"
         >
-          {loading ? "Generando..." : "Reporte de Ventas Totales"}
+          {loading.ventas ? "Generando..." : "Reporte de Ventas Totales"}
         </motion.button>
 
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          disabled={loading}
+          disabled={loading.productos}
           onClick={() => generarReporte("productos")}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg"
+          className="w-full bg-blue-600 cursor-pointer hover:bg-blue-700 text-white py-2 rounded-lg"
         >
-          {loading ? "Generando..." : "Reporte de Productos en Stock"}
+          {loading.productos ? "Generando..." : "Reporte de Productos en Stock"}
         </motion.button>
 
         <div className="space-y-3">
@@ -75,11 +79,11 @@ export default function ReportePage() {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            disabled={loading}
+            disabled={loading.cliente}
             onClick={() => generarReporte("cliente")}
-            className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg"
+            className="w-full bg-purple-600 cursor-pointer hover:bg-purple-700 text-white py-2 rounded-lg"
           >
-            {loading ? "Generando..." : "Reporte por Cliente"}
+            {loading.cliente ? "Generando..." : "Reporte por Cliente"}
           </motion.button>
         </div>
       </motion.div>
